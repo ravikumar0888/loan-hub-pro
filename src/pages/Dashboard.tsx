@@ -5,7 +5,9 @@ import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import StatusPieChart from '@/components/dashboard/StatusPieChart';
 import TrendChart from '@/components/dashboard/TrendChart';
 import CustomerTable from '@/components/dashboard/CustomerTable';
+import CustomerFormDialog from '@/components/customers/CustomerFormDialog';
 import { mockKPIData, mockTrendData, mockCustomers } from '@/data/mockData';
+import { Customer } from '@/types';
 import {
   LogIn,
   XCircle,
@@ -22,6 +24,29 @@ export default function Dashboard() {
     from: new Date(),
     to: new Date(),
   });
+  const [customers, setCustomers] = useState<Customer[]>(mockCustomers);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'add' | 'edit' | 'view'>('view');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  const canEdit = role === 'admin' || role === 'backoffice';
+
+  const handleView = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setDialogMode('view');
+    setIsDialogOpen(true);
+  };
+
+  const handleEdit = (customer: Customer) => {
+    if (!canEdit) return;
+    setSelectedCustomer(customer);
+    setDialogMode('edit');
+    setIsDialogOpen(true);
+  };
+
+  const handleSave = (customer: Customer) => {
+    setCustomers(customers.map(c => c.id === customer.id ? customer : c));
+  };
 
   const kpiCards = [
     { title: 'Login', value: mockKPIData.login, icon: LogIn, variant: 'primary' as const },
@@ -67,13 +92,22 @@ export default function Dashboard() {
 
       {/* Customer Table */}
       <div>
-        <h3 className="text-lg font-semibold text-foreground mb-4">Recent Customers</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Customer Management</h3>
         <CustomerTable
-          customers={mockCustomers}
-          onView={(customer) => console.log('View', customer)}
-          onEdit={(customer) => console.log('Edit', customer)}
+          customers={customers}
+          onView={handleView}
+          onEdit={canEdit ? handleEdit : undefined}
+          showEditButton={canEdit}
         />
       </div>
+
+      <CustomerFormDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        customer={selectedCustomer}
+        mode={dialogMode}
+        onSave={handleSave}
+      />
     </div>
   );
 }
