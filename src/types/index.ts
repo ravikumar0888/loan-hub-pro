@@ -4,6 +4,8 @@ export type LoanStatus = 'login' | 'rejected' | 'approved' | 'disbursed' | 'hold
 
 export type LoanType = 'PL' | 'HL' | 'BL';
 
+export type HomeType = 'own' | 'rental' | 'self-occupied';
+
 export interface User {
   id: string;
   firstName: string;
@@ -28,20 +30,46 @@ export interface BankDetail {
   payoutRatio: number;
 }
 
+export interface Reference {
+  name: string;
+  mobile: string;
+  address: string;
+}
+
 export interface Customer {
   id: string;
   date: Date;
+  applicationId: string;
+  // Personal Details
   name: string;
+  motherName: string;
+  spouseName: string;
   mobile: string;
   email: string;
+  // Professional Details
+  currentCompany: string;
+  currentCompanyExperience: string;
+  officialEmail: string;
+  totalWorkExperience: string;
+  currentAddress: string;
+  postalAddress: string;
+  homeType: HomeType;
+  // References
+  reference1: Reference;
+  reference2: Reference;
+  // Loan Details
   loanType: LoanType;
   loanAmount: number;
   connectorId: string;
   connectorName: string;
+  dsaId: string;
+  dsaName: string;
+  bankId: string;
+  bankName: string;
   leadOwner: string;
   salesManager: string;
   status: LoanStatus;
-  remarks: string[];
+  remarks: Array<{ text: string; addedBy: string; addedAt: Date }>;
   createdAt: Date;
 }
 

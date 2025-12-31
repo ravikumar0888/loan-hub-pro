@@ -32,6 +32,7 @@ interface CustomerTableProps {
   customers: Customer[];
   onView?: (customer: Customer) => void;
   onEdit?: (customer: Customer) => void;
+  showEditButton?: boolean;
 }
 
 const statusStyles: Record<LoanStatus, string> = {
@@ -44,7 +45,7 @@ const statusStyles: Record<LoanStatus, string> = {
   drop: 'bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20',
 };
 
-export default function CustomerTable({ customers, onView, onEdit }: CustomerTableProps) {
+export default function CustomerTable({ customers, onView, onEdit, showEditButton = true }: CustomerTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,7 +55,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
     const matchesSearch =
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.mobile.includes(searchQuery) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+      customer.applicationId?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -72,7 +73,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search customers..."
+              placeholder="Search by name, mobile, or application ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -100,6 +101,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead>App ID</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Contact</TableHead>
@@ -113,13 +115,16 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
           <TableBody>
             {paginatedCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   No customers found
                 </TableCell>
               </TableRow>
             ) : (
               paginatedCustomers.map((customer) => (
                 <TableRow key={customer.id} className="table-row-hover">
+                  <TableCell className="text-sm font-mono text-primary">
+                    {customer.applicationId || '-'}
+                  </TableCell>
                   <TableCell className="text-sm">
                     {format(customer.date, 'MMM dd, yyyy')}
                   </TableCell>
@@ -129,7 +134,6 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                   <TableCell>
                     <div className="text-sm">
                       <p>{customer.mobile}</p>
-                      <p className="text-muted-foreground">{customer.email}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -164,10 +168,12 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                           <Eye className="w-4 h-4 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEdit?.(customer)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
+                        {showEditButton && onEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(customer)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
