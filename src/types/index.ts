@@ -30,18 +30,23 @@ export interface BankDetail {
 
 export interface Customer {
   id: string;
-  date: Date;
+  applicationId?: string;
+  applicationDate: Date;
+  date?: Date;
   name: string;
   mobile: string;
   email: string;
   loanType: LoanType;
   loanAmount: number;
   connectorId: string;
-  connectorName: string;
-  leadOwner: string;
-  salesManager: string;
+  connectorName?: string;
+  connector?: { firstName: string; lastName: string };
+  bankName?: string;
+  bank?: { name: string };
+  leadOwner?: string;
+  salesManager?: string;
   status: LoanStatus;
-  remarks: string[];
+  remarks?: string[];
   createdAt: Date;
 }
 

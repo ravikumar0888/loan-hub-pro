@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { mockCustomers, mockUsers, mockDSAs } from '@/data/mockData';
 import { Customer } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,11 +19,13 @@ import {
 } from '@/components/ui/select';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import { Badge } from '@/components/ui/badge';
-import { FileSpreadsheet, Download, Filter, RefreshCw } from 'lucide-react';
+import { FileSpreadsheet, Download, Filter, RefreshCw, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { LoanStatus } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { reportsApi, usersApi, dsasApi } from '@/lib/api';
 
 const statusStyles: Record<LoanStatus, string> = {
   login: 'bg-primary/10 text-primary border-primary/20',
@@ -45,29 +46,55 @@ export default function Reports() {
   const [selectedDSA, setSelectedDSA] = useState<string>('all');
   const [selectedConnector, setSelectedConnector] = useState<string>('all');
 
-  const connectors = mockUsers.filter((u) => u.role === 'connector');
+  // Fetch report data from backend
+  const { data: reportData, isLoading: isLoadingReport } = useQuery({
+    queryKey: ['reports', dateRange, selectedDSA, selectedConnector],
+    queryFn: async () => {
+      const params: any = {};
+      if (dateRange.from) params.startDate = dateRange.from.toISOString();
+      if (dateRange.to) params.endDate = dateRange.to.toISOString();
+      if (selectedDSA !== 'all') params.dsaId = selectedDSA;
+      if (selectedConnector !== 'all') params.connectorId = selectedConnector;
 
-  const filteredData = mockCustomers.filter((customer) => {
-    const matchesDSA = selectedDSA === 'all' || true; // DSA filter would need actual mapping
-    const matchesConnector = selectedConnector === 'all' || customer.connectorId === selectedConnector;
-    const matchesDate =
-      (!dateRange.from || customer.date >= dateRange.from) &&
-      (!dateRange.to || customer.date <= dateRange.to);
-    return matchesDSA && matchesConnector && matchesDate;
+      const response = await reportsApi.generateReport(params);
+      return response.data;
+    },
   });
+
+  // Fetch connectors for dropdown
+  const { data: connectorsData } = useQuery({
+    queryKey: ['connectors'],
+    queryFn: async () => {
+      const response = await usersApi.getConnectors();
+      return response.data;
+    },
+  });
+
+  // Fetch DSAs for dropdown
+  const { data: dsasData } = useQuery({
+    queryKey: ['dsas'],
+    queryFn: async () => {
+      const response = await dsasApi.getDsas();
+      return response.data;
+    },
+  });
+
+  const connectors = connectorsData || [];
+  const dsas = dsasData || [];
+  const filteredData = reportData || [];
 
   const handleExport = () => {
     // Create CSV content
     const headers = ['Date', 'Customer Name', 'Mobile', 'Email', 'Loan Type', 'Amount', 'Status', 'Connector'];
-    const rows = filteredData.map((c) => [
-      format(c.date, 'yyyy-MM-dd'),
+    const rows = filteredData.map((c: any) => [
+      format(new Date(c.applicationDate || c.date || c.createdAt), 'yyyy-MM-dd'),
       c.name,
       c.mobile,
-      c.email,
+      c.email || '',
       c.loanType,
       c.loanAmount.toString(),
       c.status,
-      c.connectorName,
+      c.connectorName || c.connector?.firstName + ' ' + c.connector?.lastName || '',
     ]);
 
     const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
@@ -94,10 +121,10 @@ export default function Reports() {
     setSelectedConnector('all');
   };
 
-  const totalAmount = filteredData.reduce((sum, c) => sum + c.loanAmount, 0);
+  const totalAmount = filteredData.reduce((sum: number, c: any) => sum + Number(c.loanAmount), 0);
   const disbursedAmount = filteredData
-    .filter((c) => c.status === 'disbursed')
-    .reduce((sum, c) => sum + c.loanAmount, 0);
+    .filter((c: any) => c.status === 'disbursed')
+    .reduce((sum: number, c: any) => sum + Number(c.loanAmount), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -133,7 +160,7 @@ export default function Reports() {
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border">
                 <SelectItem value="all">All DSAs</SelectItem>
-                {mockDSAs.map((dsa) => (
+                {dsas.map((dsa: any) => (
                   <SelectItem key={dsa.id} value={dsa.id}>
                     {dsa.name}
                   </SelectItem>
@@ -150,7 +177,7 @@ export default function Reports() {
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border">
                 <SelectItem value="all">All Connectors</SelectItem>
-                {connectors.map((connector) => (
+                {connectors.map((connector: any) => (
                   <SelectItem key={connector.id} value={connector.id}>
                     {connector.firstName} {connector.lastName}
                   </SelectItem>
@@ -191,63 +218,72 @@ export default function Reports() {
       {/* Data Table */}
       <div className="bg-card rounded-xl shadow-md overflow-hidden">
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead>Date</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Loan Type</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Connector</TableHead>
-                <TableHead>Lead Owner</TableHead>
-                <TableHead>Sales Manager</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12">
-                    <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No data found for selected filters</p>
-                  </TableCell>
+          {isLoadingReport ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                <p className="text-muted-foreground">Loading report data...</p>
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Loan Type</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Connector</TableHead>
+                  <TableHead>Lead Owner</TableHead>
+                  <TableHead>Sales Manager</TableHead>
                 </TableRow>
-              ) : (
-                filteredData.map((customer) => (
-                  <TableRow key={customer.id} className="table-row-hover">
-                    <TableCell className="text-sm">
-                      {format(customer.date, 'MMM dd, yyyy')}
+              </TableHeader>
+              <TableBody>
+                {filteredData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-12">
+                      <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground">No data found for selected filters</p>
                     </TableCell>
-                    <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <p>{customer.mobile}</p>
-                        <p className="text-muted-foreground">{customer.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{customer.loanType}</Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ₹{customer.loanAmount.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn('capitalize font-medium', statusStyles[customer.status])}
-                      >
-                        {customer.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{customer.connectorName}</TableCell>
-                    <TableCell>{customer.leadOwner}</TableCell>
-                    <TableCell>{customer.salesManager}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredData.map((customer: any) => (
+                    <TableRow key={customer.id} className="table-row-hover">
+                      <TableCell className="text-sm">
+                        {format(new Date(customer.applicationDate || customer.date || customer.createdAt), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="font-medium">{customer.name}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <p>{customer.mobile}</p>
+                          <p className="text-muted-foreground">{customer.email || '-'}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{customer.loanType}</Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        ₹{Number(customer.loanAmount).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn('capitalize font-medium', statusStyles[customer.status])}
+                        >
+                          {customer.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}</TableCell>
+                      <TableCell>{customer.leadOwner || '-'}</TableCell>
+                      <TableCell>{customer.salesManager || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
     </div>

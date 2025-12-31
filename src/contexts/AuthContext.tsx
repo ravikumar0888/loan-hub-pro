@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { User, UserRole, AuthState } from '@/types';
+import { authApi, setAuthToken, removeAuthToken } from '@/lib/api';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -10,62 +11,65 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demo
-const mockUsers: User[] = [
-  {
-    id: '1',
-    firstName: 'Admin',
-    lastName: 'User',
-    email: 'admin@loanms.com',
-    mobile: '9876543210',
-    role: 'admin',
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    firstName: 'BackOffice',
-    lastName: 'User',
-    email: 'backoffice@loanms.com',
-    mobile: '9876543211',
-    role: 'backoffice',
-    createdAt: new Date(),
-  },
-  {
-    id: '3',
-    firstName: 'Connector',
-    lastName: 'User',
-    email: 'connector@loanms.com',
-    mobile: '9876543212',
-    role: 'connector',
-    createdAt: new Date(),
-  },
-];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
     role: null,
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if user is already logged in on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const response = await authApi.getCurrentUser();
+          if (response.success && response.data) {
+            setAuthState({
+              user: response.data,
+              isAuthenticated: true,
+              role: response.data.role,
+            });
+          }
+        } catch (error) {
+          // Token is invalid, remove it
+          removeAuthToken();
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const user = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (user && password === 'password123') {
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        role: user.role,
-      });
-      return true;
+    try {
+      const response = await authApi.login(email, password);
+
+      if (response.success && response.data) {
+        // Save token to localStorage
+        setAuthToken(response.data.token);
+
+        // Update auth state
+        setAuthState({
+          user: response.data.user,
+          isAuthenticated: true,
+          role: response.data.user.role,
+        });
+
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
   }, []);
 
   const logout = useCallback(() => {
+    removeAuthToken();
     setAuthState({
       user: null,
       isAuthenticated: false,
@@ -74,17 +78,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const forgotPassword = useCallback(async (email: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const user = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    return !!user;
+    try {
+      const response = await authApi.forgotPassword(email);
+      return response.success;
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return false;
+    }
   }, []);
 
   const resetPassword = useCallback(async (password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return password.length >= 8;
+    try {
+      // In a real scenario, you'd get the token from URL params
+      const token = new URLSearchParams(window.location.search).get('token') || '';
+      const response = await authApi.resetPassword(token, password);
+      return response.success;
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return false;
+    }
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider
