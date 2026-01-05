@@ -82,6 +82,7 @@ export default function Users() {
   );
 
   const roleStyles: Record<UserRole, string> = {
+    master_admin: 'bg-accent/10 text-accent border-accent/20',
     admin: 'bg-primary/10 text-primary border-primary/20',
     backoffice: 'bg-info/10 text-info border-info/20',
     connector: 'bg-success/10 text-success border-success/20',

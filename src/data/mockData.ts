@@ -1,4 +1,4 @@
-import { Customer, Bank, User, DSA, KPIData, LoanStatus, LoanType } from '@/types';
+import { Customer, Bank, User, DSA, KPIData, LoanStatus, LoanType, HomeType } from '@/types';
 
 export const mockKPIData: KPIData = {
   login: 145,
@@ -96,28 +96,72 @@ export const mockDSAs: DSA[] = [
     ],
     createdAt: new Date(),
   },
+  {
+    id: '3',
+    name: 'Capital Connect',
+    bankDetails: [
+      { id: '4', bankId: '4', bankName: 'Axis Bank', loanType: 'PL', payoutRatio: 2.2 },
+    ],
+    createdAt: new Date(),
+  },
 ];
 
 const statuses: LoanStatus[] = ['login', 'rejected', 'approved', 'disbursed', 'hold', 'relook', 'drop'];
 const loanTypes: LoanType[] = ['PL', 'HL', 'BL'];
+const homeTypes: HomeType[] = ['own', 'rental', 'self-occupied'];
 
-export const mockCustomers: Customer[] = Array.from({ length: 50 }, (_, i) => ({
-  id: `${i + 1}`,
-  date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-  name: [
-    'Rahul Sharma', 'Priya Patel', 'Amit Kumar', 'Neha Singh', 'Vikram Verma',
-    'Anjali Gupta', 'Rohit Joshi', 'Deepika Reddy', 'Arjun Mehta', 'Kavita Nair',
-    'Suresh Iyer', 'Meera Kapoor', 'Anil Rao', 'Pooja Shah', 'Karan Malhotra',
-  ][i % 15],
-  mobile: `98${Math.floor(10000000 + Math.random() * 90000000)}`,
-  email: `customer${i + 1}@email.com`,
-  loanType: loanTypes[Math.floor(Math.random() * 3)],
-  loanAmount: Math.floor(100000 + Math.random() * 4900000),
-  connectorId: mockUsers.filter(u => u.role === 'connector')[Math.floor(Math.random() * 2)].id,
-  connectorName: mockUsers.filter(u => u.role === 'connector')[Math.floor(Math.random() * 2)].firstName + ' ' + mockUsers.filter(u => u.role === 'connector')[Math.floor(Math.random() * 2)].lastName,
-  leadOwner: ['Rajesh Kumar', 'Priya Sharma'][Math.floor(Math.random() * 2)],
-  salesManager: ['Vikram Singh', 'Neha Verma'][Math.floor(Math.random() * 2)],
-  status: statuses[Math.floor(Math.random() * 7)],
-  remarks: ['Initial inquiry', 'Documents pending', 'Verification in progress'],
-  createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-}));
+const connectors = mockUsers.filter(u => u.role === 'connector');
+
+export const mockCustomers: Customer[] = Array.from({ length: 50 }, (_, i) => {
+  const connector = connectors[Math.floor(Math.random() * connectors.length)];
+  const dsa = mockDSAs[Math.floor(Math.random() * mockDSAs.length)];
+  const bank = mockBanks[Math.floor(Math.random() * mockBanks.length)];
+  
+  return {
+    id: `${i + 1}`,
+    date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+    applicationId: `APP${String(i + 1001).padStart(6, '0')}`,
+    name: [
+      'Rahul Sharma', 'Priya Patel', 'Amit Kumar', 'Neha Singh', 'Vikram Verma',
+      'Anjali Gupta', 'Rohit Joshi', 'Deepika Reddy', 'Arjun Mehta', 'Kavita Nair',
+      'Suresh Iyer', 'Meera Kapoor', 'Anil Rao', 'Pooja Shah', 'Karan Malhotra',
+    ][i % 15],
+    motherName: ['Sunita Sharma', 'Kamla Patel', 'Rekha Kumar', 'Usha Singh', 'Meena Verma'][i % 5],
+    spouseName: i % 3 === 0 ? '' : ['Anita Sharma', 'Raj Patel', 'Suman Kumar', 'Ravi Singh'][i % 4],
+    mobile: `98${Math.floor(10000000 + Math.random() * 90000000)}`,
+    email: `customer${i + 1}@email.com`,
+    currentCompany: ['TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra'][i % 5],
+    currentCompanyExperience: `${Math.floor(1 + Math.random() * 10)} years`,
+    officialEmail: `customer${i + 1}@${['tcs', 'infosys', 'wipro', 'hcl', 'techmahindra'][i % 5]}.com`,
+    totalWorkExperience: `${Math.floor(3 + Math.random() * 15)} years`,
+    currentAddress: `${Math.floor(100 + Math.random() * 900)}, Sector ${Math.floor(1 + Math.random() * 50)}, Mumbai`,
+    postalAddress: `${Math.floor(100 + Math.random() * 900)}, Sector ${Math.floor(1 + Math.random() * 50)}, Mumbai - 400001`,
+    homeType: homeTypes[Math.floor(Math.random() * 3)],
+    reference1: {
+      name: ['Suresh Kumar', 'Ramesh Sharma', 'Anil Gupta'][i % 3],
+      mobile: `97${Math.floor(10000000 + Math.random() * 90000000)}`,
+      address: `${Math.floor(100 + Math.random() * 900)}, Reference Area, Mumbai`,
+    },
+    reference2: {
+      name: ['Mahesh Verma', 'Dinesh Patel', 'Ganesh Rao'][i % 3],
+      mobile: `96${Math.floor(10000000 + Math.random() * 90000000)}`,
+      address: `${Math.floor(100 + Math.random() * 900)}, Reference Area, Delhi`,
+    },
+    loanType: loanTypes[Math.floor(Math.random() * 3)],
+    loanAmount: Math.floor(100000 + Math.random() * 4900000),
+    connectorId: connector.id,
+    connectorName: `${connector.firstName} ${connector.lastName}`,
+    dsaId: dsa.id,
+    dsaName: dsa.name,
+    bankId: bank.id,
+    bankName: bank.name,
+    leadOwner: ['Rajesh Kumar', 'Priya Sharma'][Math.floor(Math.random() * 2)],
+    salesManager: ['Vikram Singh', 'Neha Verma'][Math.floor(Math.random() * 2)],
+    status: statuses[Math.floor(Math.random() * 7)],
+    remarks: [
+      { text: 'Initial inquiry received', addedBy: 'Rajesh Kumar', addedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+      { text: 'Documents pending from customer', addedBy: 'Priya Sharma', addedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
+    ],
+    createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+  };
+});

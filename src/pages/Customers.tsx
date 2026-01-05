@@ -189,8 +189,10 @@ export default function Customers() {
       newErrors.loanAmount = 'Valid loan amount required';
     if (!formData.connectorId) newErrors.connectorId = 'Connector is required';
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleAddNew = () => {
+    setSelectedCustomer(null);
+    setDialogMode('add');
+    setIsDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -304,7 +306,13 @@ export default function Customers() {
     setIsEditDialogOpen(true);
   };
 
-  const canAddCustomer = role === 'admin' || role === 'backoffice';
+  const handleSave = (customer: Customer) => {
+    if (dialogMode === 'add') {
+      setCustomers([customer, ...customers]);
+    } else if (dialogMode === 'edit') {
+      setCustomers(customers.map(c => c.id === customer.id ? customer : c));
+    }
+  };
 
   if (isLoadingCustomers) {
     return (

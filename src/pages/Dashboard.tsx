@@ -267,7 +267,7 @@ export default function Dashboard() {
 
       {/* Customer Table */}
       <div>
-        <h3 className="text-lg font-semibold text-foreground mb-4">Recent Customers</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Customer Management</h3>
         <CustomerTable
           customers={recentCustomersData || []}
           onView={handleView}
