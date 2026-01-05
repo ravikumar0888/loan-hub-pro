@@ -13,6 +13,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Mock users for demo
 const mockUsers: User[] = [
   {
+    id: '0',
+    firstName: 'Master',
+    lastName: 'Admin',
+    email: 'master@loanms.com',
+    mobile: '9876543200',
+    role: 'master_admin',
+    createdAt: new Date(),
+  },
+  {
     id: '1',
     firstName: 'Admin',
     lastName: 'User',

@@ -52,7 +52,13 @@ export default function LoginPage() {
           title: 'Welcome back!',
           description: 'You have successfully logged in.',
         });
-        navigate('/dashboard');
+        // Redirect based on role
+        const userEmail = email.toLowerCase();
+        if (userEmail === 'master@loanms.com') {
+          navigate('/master-admin');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         toast({
           title: 'Login failed',
@@ -260,6 +266,10 @@ export default function LoginPage() {
             <div className="mt-8 p-4 rounded-xl bg-white/5 border border-white/10">
               <p className="text-sm text-slate-400 text-center mb-3 font-medium">Demo Credentials</p>
               <div className="grid gap-2 text-xs">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-accent/10 border border-accent/20">
+                  <span className="text-accent">Master Admin</span>
+                  <span className="text-accent font-mono">master@loanms.com</span>
+                </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
                   <span className="text-slate-400">Admin</span>
                   <span className="text-slate-300 font-mono">admin@loanms.com</span>
@@ -277,6 +287,16 @@ export default function LoginPage() {
                   <span className="text-emerald-300 font-mono">password123</span>
                 </div>
               </div>
+            </div>
+
+            {/* Create Organization Link */}
+            <div className="mt-6 text-center">
+              <p className="text-slate-400 text-sm">
+                Don't have an organization?{' '}
+                <Link to="/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                  Create one now
+                </Link>
+              </p>
             </div>
           </div>
           
