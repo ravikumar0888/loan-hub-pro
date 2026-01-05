@@ -1,10 +1,69 @@
-export type UserRole = 'admin' | 'backoffice' | 'connector';
+export type UserRole = 'master_admin' | 'admin' | 'backoffice' | 'connector';
 
 export type LoanStatus = 'login' | 'rejected' | 'approved' | 'disbursed' | 'hold' | 'relook' | 'drop';
 
 export type LoanType = 'PL' | 'HL' | 'BL';
 
 export type HomeType = 'own' | 'rental' | 'self-occupied';
+
+// Pricing Tiers
+export type PricingTier = 'starter' | 'professional' | 'enterprise';
+
+export interface PricingPlan {
+  id: string;
+  name: string;
+  tier: PricingTier;
+  pricePerSeat: number;
+  minSeats: number;
+  maxSeats: number | null;
+  features: string[];
+  isPopular?: boolean;
+}
+
+// Organization
+export interface Organization {
+  id: string;
+  name: string;
+  logo?: string;
+  email: string;
+  phone: string;
+  address: string;
+  website?: string;
+  pricingTier: PricingTier;
+  seats: number;
+  usedSeats: number;
+  superAdminId: string;
+  status: 'active' | 'suspended' | 'trial';
+  trialEndsAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Billing
+export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled';
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  organizationId: string;
+  organizationName: string;
+  amount: number;
+  seats: number;
+  pricePerSeat: number;
+  billingPeriodStart: Date;
+  billingPeriodEnd: Date;
+  dueDate: Date;
+  status: InvoiceStatus;
+  paidAt?: Date;
+  createdAt: Date;
+}
+
+export interface BillingHistory {
+  organizationId: string;
+  invoices: Invoice[];
+  totalPaid: number;
+  totalOutstanding: number;
+}
 
 export interface User {
   id: string;
@@ -13,6 +72,7 @@ export interface User {
   email: string;
   mobile: string;
   role: UserRole;
+  organizationId?: string;
   createdAt: Date;
 }
 

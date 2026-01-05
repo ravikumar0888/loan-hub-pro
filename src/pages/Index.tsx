@@ -2,9 +2,13 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
   
   if (isAuthenticated) {
+    // Redirect master_admin to their dashboard
+    if (role === 'master_admin') {
+      return <Navigate to="/master-admin" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
   
