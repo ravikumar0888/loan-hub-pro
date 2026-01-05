@@ -98,9 +98,9 @@ export interface Reference {
 
 export interface Customer {
   id: string;
-  date: Date;
-  applicationId: string;
-  // Personal Details
+  applicationId?: string;
+  applicationDate: Date;
+  date?: Date;
   name: string;
   motherName: string;
   spouseName: string;
@@ -121,15 +121,14 @@ export interface Customer {
   loanType: LoanType;
   loanAmount: number;
   connectorId: string;
-  connectorName: string;
-  dsaId: string;
-  dsaName: string;
-  bankId: string;
-  bankName: string;
-  leadOwner: string;
-  salesManager: string;
+  connectorName?: string;
+  connector?: { firstName: string; lastName: string };
+  bankName?: string;
+  bank?: { name: string };
+  leadOwner?: string;
+  salesManager?: string;
   status: LoanStatus;
-  remarks: Array<{ text: string; addedBy: string; addedAt: Date }>;
+  remarks?: string[];
   createdAt: Date;
 }
 

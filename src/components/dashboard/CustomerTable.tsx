@@ -126,7 +126,7 @@ export default function CustomerTable({ customers, onView, onEdit, showEditButto
                     {customer.applicationId || '-'}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {format(customer.date, 'MMM dd, yyyy')}
+                    {format(new Date(customer.applicationDate || customer.date || customer.createdAt), 'MMM dd, yyyy')}
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-foreground">{customer.name}</div>
@@ -155,27 +155,18 @@ export default function CustomerTable({ customers, onView, onEdit, showEditButto
                       {customer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{customer.connectorName}</TableCell>
+                  <TableCell className="text-sm">
+                    {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
+                  </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover border border-border">
-                        <DropdownMenuItem onClick={() => onView?.(customer)}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        {showEditButton && onEdit && (
-                          <DropdownMenuItem onClick={() => onEdit(customer)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => onView?.(customer)}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => onEdit?.(customer)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
