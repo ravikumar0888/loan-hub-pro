@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
   title?: string;
+  children?: React.ReactNode;
 }
 
-export default function DashboardLayout({ title = 'Dashboard' }: DashboardLayoutProps) {
+export default function DashboardLayout({ title = 'Dashboard', children }: DashboardLayoutProps) {
   const { isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -58,7 +59,7 @@ export default function DashboardLayout({ title = 'Dashboard' }: DashboardLayout
       >
         <Header title={title} onMenuClick={() => setMobileMenuOpen(true)} />
         <main className="p-6">
-          <Outlet />
+          {children || <Outlet />}
         </main>
       </div>
     </div>

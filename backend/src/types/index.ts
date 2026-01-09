@@ -1,7 +1,16 @@
 import { Request } from 'express';
 
-// User Types
-export type UserRole = 'admin' | 'backoffice' | 'connector';
+// ==================== USER ROLES ====================
+
+export type UserRole = 'master_admin' | 'superadmin' | 'admin' | 'backoffice' | 'connector';
+
+// ==================== MULTI-TENANCY TYPES ====================
+
+export type PricingTier = 'starter' | 'professional' | 'enterprise';
+export type OrganizationStatus = 'trial' | 'active' | 'suspended';
+export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled';
+
+// ==================== AUTH TYPES ====================
 
 export interface AuthUser {
   userId: string;
@@ -41,42 +50,85 @@ export interface PaginationQuery {
   limit?: number;
 }
 
-// Customer Filter Query
-export interface CustomerFilterQuery extends PaginationQuery {
-  status?: LoanStatus;
+export interface PaginationResult {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+// ==================== ORGANIZATION TYPES ====================
+
+export interface OrganizationQueryParams extends PaginationQuery {
+  status?: OrganizationStatus;
   search?: string;
+}
+
+export interface CreateOrganizationDto {
+  // Organization details
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  website?: string;
+  logo?: string;
+  pricingTier: PricingTier;
+  seats: number;
+  // Super admin details
+  adminFirstName: string;
+  adminLastName: string;
+  adminEmail: string;
+  adminMobile: string;
+  adminPassword: string;
+}
+
+export interface UpdateOrganizationDto {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+  logo?: string;
+  pricingTier?: PricingTier;
+  seats?: number;
+  status?: OrganizationStatus;
+}
+
+// ==================== INVOICE TYPES ====================
+
+export interface InvoiceQueryParams extends PaginationQuery {
+  organizationId?: string;
+  status?: InvoiceStatus;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface CreateInvoiceDto {
+  organizationId: string;
+  billingPeriodStart: Date;
+  billingPeriodEnd: Date;
+  dueDate: Date;
+}
+
+export interface UpdateInvoiceStatusDto {
+  status: InvoiceStatus;
+}
+
+// ==================== CUSTOMER TYPES ====================
+
+export interface CustomerFilterQuery extends PaginationQuery {
+  status?: string;
   connectorId?: string;
-  startDate?: string;
-  endDate?: string;
-}
-
-// Dashboard Types
-export interface KPIData {
-  login: number;
-  rejected: number;
-  approved: number;
-  disbursed: number;
-  hold: number;
-  relook: number;
-  drop: number;
-}
-
-export interface TrendDataPoint {
-  month: string;
-  sales: number;
-  disbursed: number;
-}
-
-// Report Types
-export interface ReportQuery {
-  startDate?: string;
-  endDate?: string;
   dsaId?: string;
-  connectorId?: string;
+  bankId?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
-export interface ReportSummary {
-  totalApplications: number;
-  totalLoanAmount: number;
-  disbursedAmount: number;
+// ==================== USER TYPES ====================
+
+export interface UserQuery extends PaginationQuery {
+  role?: UserRole;
+  search?: string;
 }

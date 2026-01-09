@@ -254,3 +254,68 @@ export const reportsApi = {
     return response.blob();
   },
 };
+
+// Organizations API
+export const organizationsApi = {
+  getAll: (params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any[]; pagination: any }>(
+      `/organizations${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+
+  getById: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/organizations/${id}`),
+
+  create: (data: any) =>
+    apiRequest<{ success: boolean; data: any }>('/organizations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: any) =>
+    apiRequest<{ success: boolean; data: any }>(`/organizations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    apiRequest<{ success: boolean; message: string }>(`/organizations/${id}`, {
+      method: 'DELETE',
+    }),
+
+  getStats: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/organizations/${id}/stats`),
+};
+
+// Invoices API
+export const invoicesApi = {
+  getAll: (params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any[]; pagination: any }>(
+      `/invoices${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+
+  create: (data: any) =>
+    apiRequest<{ success: boolean; data: any }>('/invoices', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateStatus: (id: string, status: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/invoices/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+  getAnalytics: (params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/invoices/analytics${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+};
+
+// Signup API
+export const signupApi = {
+  createOrganization: (data: any) =>
+    apiRequest<{ success: boolean; data: any }>('/signup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};

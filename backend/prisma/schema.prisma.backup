@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model banks {
+  id                String              @id
+  name              String              @unique @db.VarChar(255)
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime
+  organization_id   String?
+  organizations     organizations?      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  customers         customers[]
+  dsa_bank_details  dsa_bank_details[]
+  user_bank_details user_bank_details[]
+
+  @@index([organization_id])
+}
+
+model customer_remarks {
+  id          String    @id
+  customer_id String
+  remark      String
+  created_by  String?
+  created_at  DateTime  @default(now())
+  users       users?    @relation(fields: [created_by], references: [id])
+  customers   customers @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@index([customer_id])
+}
+
+model customers {
+  id                                  String             @id
+  name                                String             @db.VarChar(255)
+  mobile                              String             @db.VarChar(15)
+  email                               String?            @db.VarChar(255)
+  loan_type                           LoanType
+  loan_amount                         Decimal            @db.Decimal(15, 2)
+  connector_id                        String?
+  lead_owner                          String?
+  sales_manager                       String?            @db.VarChar(255)
+  status                              LoanStatus
+  application_date                    DateTime           @default(now()) @db.Date
+  created_at                          DateTime           @default(now())
+  updated_at                          DateTime
+  application_id                      String?            @unique @db.VarChar(50)
+  bank_id                             String?
+  case_type                           CaseType?
+  created_by                          String?
+  current_address                     String?
+  current_company_exp                 String?            @db.VarChar(50)
+  date_of_birth                       DateTime?          @db.Date
+  dsa_id                              String?
+  home_type                           String?            @db.VarChar(50)
+  mother_name                         String?            @db.VarChar(255)
+  nominee_date_of_birth               DateTime?          @db.Date
+  nominee_name                        String?            @db.VarChar(255)
+  nominee_relation                    String?            @db.VarChar(100)
+  official_email                      String?            @db.VarChar(255)
+  pan_no                              String?            @db.VarChar(10)
+  pdf_url                             String?
+  personal_email                      String?            @db.VarChar(255)
+  postal_address                      String?
+  reference1_address                  String?
+  reference1_mobile                   String?            @db.VarChar(15)
+  reference1_name                     String?            @db.VarChar(255)
+  reference2_address                  String?
+  reference2_mobile                   String?            @db.VarChar(15)
+  reference2_name                     String?            @db.VarChar(255)
+  spouse_name                         String?            @db.VarChar(255)
+  total_work_experience               String?            @db.VarChar(50)
+  organization_id                     String?
+  location                            String?            @db.VarChar(255)
+  subvention_amount                   Decimal?           @db.Decimal(15, 2)
+  customer_remarks                    customer_remarks[]
+  banks                               banks?             @relation(fields: [bank_id], references: [id])
+  users_customers_connector_idTousers users?             @relation("customers_connector_idTousers", fields: [connector_id], references: [id])
+  users_customers_created_byTousers   users?             @relation("customers_created_byTousers", fields: [created_by], references: [id])
+  dsas                                dsas?              @relation(fields: [dsa_id], references: [id])
+  users_customers_lead_ownerTousers   users?             @relation("customers_lead_ownerTousers", fields: [lead_owner], references: [id])
+  organizations                       organizations?     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([application_date])
+  @@index([bank_id])
+  @@index([connector_id])
+  @@index([created_by])
+  @@index([dsa_id])
+  @@index([lead_owner])
+  @@index([organization_id])
+  @@index([status])
+}
+
+model dsa_bank_details {
+  id           String   @id
+  dsa_id       String
+  bank_id      String
+  loan_type    LoanType
+  payout_ratio Decimal  @db.Decimal(5, 2)
+  created_at   DateTime @default(now())
+  banks        banks    @relation(fields: [bank_id], references: [id], onDelete: Cascade)
+  dsas         dsas     @relation(fields: [dsa_id], references: [id], onDelete: Cascade)
+
+  @@unique([dsa_id, bank_id, loan_type])
+  @@index([dsa_id])
+}
+
+model dsa_invoices {
+  id             String   @id
+  invoice_number String   @unique @db.VarChar(50)
+  dsa_id         String
+  issued_by_id   String
+  invoice_date   DateTime @db.Date
+  period_month   Int
+  period_year    Int
+  taxable_amount Decimal  @db.Decimal(15, 2)
+  cgst_rate      Decimal  @db.Decimal(5, 2)
+  cgst_amount    Decimal  @db.Decimal(15, 2)
+  sgst_rate      Decimal  @db.Decimal(5, 2)
+  sgst_amount    Decimal  @db.Decimal(15, 2)
+  round_off      Decimal  @db.Decimal(10, 2)
+  total_amount   Decimal  @db.Decimal(15, 2)
+  hsn_sac        String   @db.VarChar(10)
+  pdf_url        String?
+  status         String   @default("issued") @db.VarChar(20)
+  created_at     DateTime @default(now())
+  updated_at     DateTime
+  dsas           dsas     @relation(fields: [dsa_id], references: [id], onDelete: Cascade)
+  users          users    @relation(fields: [issued_by_id], references: [id])
+
+  @@index([dsa_id])
+  @@index([invoice_date])
+}
+
+model dsas {
+  id               String             @id
+  name             String             @unique @db.VarChar(255)
+  is_active        Boolean            @default(true)
+  created_at       DateTime           @default(now())
+  updated_at       DateTime
+  address          String?
+  city             String?            @db.VarChar(100)
+  company_name     String?            @db.VarChar(255)
+  email            String?            @db.VarChar(255)
+  gstin            String?            @db.VarChar(15)
+  pin_code         String?            @db.VarChar(6)
+  state_code       String?            @db.VarChar(2)
+  state_name       String?            @db.VarChar(100)
+  organization_id  String?
+  customers        customers[]
+  dsa_bank_details dsa_bank_details[]
+  dsa_invoices     dsa_invoices[]
+  organizations    organizations?     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id])
+}
+
+model invoices {
+  id                   String        @id
+  invoice_number       String        @unique @db.VarChar(50)
+  organization_id      String
+  amount               Decimal       @db.Decimal(10, 2)
+  seats                Int
+  price_per_seat       Decimal       @db.Decimal(10, 2)
+  billing_period_start DateTime      @db.Date
+  billing_period_end   DateTime      @db.Date
+  due_date             DateTime      @db.Date
+  status               InvoiceStatus @default(pending)
+  paid_at              DateTime?
+  created_at           DateTime      @default(now())
+  organizations        organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([due_date])
+  @@index([organization_id])
+  @@index([status])
+}
+
+model organizations {
+  id            String             @id
+  name          String             @db.VarChar(255)
+  logo          String?
+  email         String             @unique @db.VarChar(255)
+  phone         String             @db.VarChar(15)
+  address       String
+  website       String?            @db.VarChar(255)
+  pricing_tier  PricingTier
+  seats         Int
+  used_seats    Int                @default(0)
+  status        OrganizationStatus @default(trial)
+  trial_ends_at DateTime?
+  created_at    DateTime           @default(now())
+  updated_at    DateTime
+  banks         banks[]
+  customers     customers[]
+  dsas          dsas[]
+  invoices      invoices[]
+  users         users[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model password_reset_tokens {
+  id         String   @id
+  user_id    String
+  token      String   @unique @db.VarChar(255)
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model payout_ledger {
+  id                                      String   @id
+  connector_id                            String
+  customer_id                             String?
+  entry_type                              String
+  amount                                  Decimal  @db.Decimal(15, 2)
+  description                             String
+  month                                   Int
+  year                                    Int
+  created_by                              String?
+  created_at                              DateTime @default(now())
+  users_payout_ledger_connector_idTousers users    @relation("payout_ledger_connector_idTousers", fields: [connector_id], references: [id], onDelete: Cascade)
+  users_payout_ledger_created_byTousers   users?   @relation("payout_ledger_created_byTousers", fields: [created_by], references: [id])
+
+  @@index([connector_id])
+  @@index([connector_id, month, year])
+  @@index([entry_type])
+}
+
+model payout_pdfs {
+  id                                    String   @id
+  connector_id                          String
+  month                                 Int
+  year                                  Int
+  pdf_url                               String
+  generated_by                          String
+  created_at                            DateTime @default(now())
+  users_payout_pdfs_connector_idTousers users    @relation("payout_pdfs_connector_idTousers", fields: [connector_id], references: [id], onDelete: Cascade)
+  users_payout_pdfs_generated_byTousers users    @relation("payout_pdfs_generated_byTousers", fields: [generated_by], references: [id])
+
+  @@unique([connector_id, month, year])
+  @@index([connector_id])
+}
+
+model user_bank_details {
+  id           String   @id
+  user_id      String
+  bank_id      String
+  loan_type    LoanType
+  payout_ratio Decimal  @db.Decimal(5, 2)
+  created_at   DateTime @default(now())
+  banks        banks    @relation(fields: [bank_id], references: [id], onDelete: Cascade)
+  users        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, bank_id, loan_type])
+  @@index([user_id])
+}
+
+model users {
+  id                                              String                  @id
+  first_name                                      String                  @db.VarChar(100)
+  last_name                                       String                  @db.VarChar(100)
+  email                                           String                  @unique @db.VarChar(255)
+  mobile                                          String                  @unique @db.VarChar(15)
+  password_hash                                   String                  @db.VarChar(255)
+  role                                            UserRole
+  is_active                                       Boolean                 @default(true)
+  created_at                                      DateTime                @default(now())
+  updated_at                                      DateTime
+  created_by                                      String?
+  cgst_rate                                       Decimal?                @db.Decimal(5, 2)
+  company_address                                 String?
+  company_email                                   String?                 @db.VarChar(255)
+  company_gstin                                   String?                 @db.VarChar(15)
+  company_name                                    String?                 @db.VarChar(255)
+  company_state                                   String?                 @db.VarChar(100)
+  company_state_code                              String?                 @db.VarChar(2)
+  hsn_sac                                         String?                 @db.VarChar(10)
+  profile_photo                                   String?
+  sgst_rate                                       Decimal?                @db.Decimal(5, 2)
+  organization_id                                 String?
+  customer_remarks                                customer_remarks[]
+  customers_customers_connector_idTousers         customers[]             @relation("customers_connector_idTousers")
+  customers_customers_created_byTousers           customers[]             @relation("customers_created_byTousers")
+  customers_customers_lead_ownerTousers           customers[]             @relation("customers_lead_ownerTousers")
+  dsa_invoices                                    dsa_invoices[]
+  password_reset_tokens                           password_reset_tokens[]
+  payout_ledger_payout_ledger_connector_idTousers payout_ledger[]         @relation("payout_ledger_connector_idTousers")
+  payout_ledger_payout_ledger_created_byTousers   payout_ledger[]         @relation("payout_ledger_created_byTousers")
+  payout_pdfs_payout_pdfs_connector_idTousers     payout_pdfs[]           @relation("payout_pdfs_connector_idTousers")
+  payout_pdfs_payout_pdfs_generated_byTousers     payout_pdfs[]           @relation("payout_pdfs_generated_byTousers")
+  user_bank_details                               user_bank_details[]
+  users                                           users?                  @relation("usersTousers", fields: [created_by], references: [id])
+  other_users                                     users[]                 @relation("usersTousers")
+  organizations                                   organizations?          @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([created_by])
+  @@index([email])
+  @@index([organization_id])
+  @@index([role])
+}
+
+enum CaseType {
+  fresh
+  bt
+  bt_topup
+}
+
+enum InvoiceStatus {
+  draft
+  pending
+  paid
+  overdue
+  cancelled
+}
+
+enum LoanStatus {
+  login
+  rejected
+  approved
+  disbursed
+  hold
+  relook
+  drop
+}
+
+enum LoanType {
+  PL
+  HL
+  BL
+}
+
+enum OrganizationStatus {
+  trial
+  active
+  suspended
+}
+
+enum PricingTier {
+  starter
+  professional
+  enterprise
+}
+
+enum UserRole {
+  superadmin
+  admin
+  backoffice
+  connector
+  master_admin
+}

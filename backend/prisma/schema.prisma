@@ -1,4 +1,9 @@
+<<<<<<< Updated upstream
 // Prisma Schema for LoanMS - Loan Management System
+=======
+// Prisma Schema for LoanMS - Multi-Tenant SaaS Platform
+// This schema maps camelCase names (used in backend code) to snake_case database columns
+>>>>>>> Stashed changes
 
 generator client {
   provider = "prisma-client-js"
@@ -9,11 +14,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+<<<<<<< Updated upstream
 // Enums
 enum UserRole {
   admin
   backoffice
   connector
+=======
+// ==================== ENUMS ====================
+
+enum UserRole {
+  master_admin // Platform administrator (manages all organizations)
+  superadmin // Organization super-user
+  admin // Organization administrator
+  backoffice // Organization back-office staff
+  connector // Organization connector/sales staff
+}
+
+enum OrganizationStatus {
+  trial // 14-day free trial
+  active // Paid and active
+  suspended // Payment overdue or manually suspended
+}
+
+enum InvoiceStatus {
+  draft
+  pending
+  paid
+  overdue
+  cancelled
+}
+
+enum PricingTier {
+  starter // ₹499/seat, 1-5 seats
+  professional // ₹899/seat, 5-25 seats
+  enterprise // ₹1499/seat, 10+ unlimited
+>>>>>>> Stashed changes
 }
 
 enum LoanStatus {
@@ -32,6 +68,7 @@ enum LoanType {
   BL // Business Loan
 }
 
+<<<<<<< Updated upstream
 // Users Table
 model User {
   id           String   @id @default(uuid())
@@ -95,10 +132,244 @@ model Dsa {
   id        String   @id @default(uuid())
   name      String   @unique @db.VarChar(255)
   isActive  Boolean  @default(true) @map("is_active")
+=======
+enum CaseType {
+  fresh
+  bt // Balance Transfer
+  bt_topup // Balance Transfer with Top-Up
+}
+
+// ==================== MULTI-TENANCY MODELS ====================
+
+// Organizations Table (Multi-Tenant Parent)
+model Organization {
+  id          String             @id @default(uuid())
+  name        String             @db.VarChar(255)
+  logo        String?            @db.Text
+  email       String             @unique @db.VarChar(255)
+  phone       String             @db.VarChar(15)
+  address     String             @db.Text
+  website     String?            @db.VarChar(255)
+  pricingTier PricingTier        @map("pricing_tier")
+  seats       Int // Total purchased seats
+  usedSeats   Int                @default(0) @map("used_seats") // Current active users
+  status      OrganizationStatus @default(trial)
+  trialEndsAt DateTime?          @map("trial_ends_at")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  users     User[]
+  customers Customer[]
+  banks     Bank[]
+  dsas      Dsa[]
+  invoices  Invoice[]
+
+  @@index([status])
+  @@index([email])
+  @@map("organizations")
+}
+
+// Subscription Invoices Table (for billing organizations)
+model Invoice {
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique @map("invoice_number") @db.VarChar(50)
+  organizationId     String        @map("organization_id")
+  amount             Decimal       @db.Decimal(10, 2)
+  seats              Int // Number of seats billed
+  pricePerSeat       Decimal       @map("price_per_seat") @db.Decimal(10, 2)
+  billingPeriodStart DateTime      @map("billing_period_start") @db.Date
+  billingPeriodEnd   DateTime      @map("billing_period_end") @db.Date
+  dueDate            DateTime      @map("due_date") @db.Date
+  status             InvoiceStatus @default(pending)
+  paidAt             DateTime?     @map("paid_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+// ==================== CORE MODELS ====================
+
+// Users Table (with multi-tenancy)
+model User {
+  id             String   @id @default(uuid())
+  firstName      String   @map("first_name") @db.VarChar(100)
+  lastName       String   @map("last_name") @db.VarChar(100)
+  email          String   @unique @db.VarChar(255)
+  mobile         String   @unique @db.VarChar(15)
+  passwordHash   String   @map("password_hash") @db.VarChar(255)
+  role           UserRole
+  organizationId String?  @map("organization_id") // NULL for master_admin
+  isActive       Boolean  @default(true) @map("is_active")
+  createdBy      String?  @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Profile fields
+  profilePhoto String? @map("profile_photo") @db.Text
+
+  // Admin company details (for invoice generation)
+  companyName      String?  @map("company_name") @db.VarChar(255)
+  companyAddress   String?  @map("company_address") @db.Text
+  companyGSTIN     String?  @map("company_gstin") @db.VarChar(15)
+  companyState     String?  @map("company_state") @db.VarChar(100)
+  companyStateCode String?  @map("company_state_code") @db.VarChar(2)
+  companyEmail     String?  @map("company_email") @db.VarChar(255)
+  hsnSac           String?  @map("hsn_sac") @db.VarChar(10)
+  cgstRate         Decimal? @map("cgst_rate") @db.Decimal(5, 2)
+  sgstRate         Decimal? @map("sgst_rate") @db.Decimal(5, 2)
+
+  // Relations
+  organization            Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customersAsConnector    Customer[]           @relation("CustomerConnector")
+  customersAsCreator      Customer[]           @relation("CustomerCreator")
+  customersAsLeadOwner    Customer[]           @relation("CustomerLeadOwner")
+  dsaInvoices             DsaInvoice[]
+  customerRemarks         CustomerRemark[]
+  passwordResetTokens     PasswordResetToken[]
+  payoutLedgerAsConnector PayoutLedger[]       @relation("PayoutConnector")
+  payoutLedgerAsCreator   PayoutLedger[]       @relation("PayoutCreator")
+  payoutPdfs              PayoutPDF[]
+  userBankDetails         UserBankDetail[]
+
+  @@index([email])
+  @@index([role])
+  @@index([organizationId])
+  @@index([createdBy])
+  @@map("users")
+}
+
+// Customers/Loan Applications Table
+model Customer {
+  id              String   @id @default(uuid())
+  applicationId   String   @unique @map("application_id") @db.VarChar(50)
+  applicationDate DateTime @map("application_date") @db.Date
+
+  // Personal Details
+  name          String    @db.VarChar(255)
+  motherName    String?   @map("mother_name") @db.VarChar(255)
+  spouseName    String?   @map("spouse_name") @db.VarChar(255)
+  mobile        String    @db.VarChar(15)
+  personalEmail String?   @map("personal_email") @db.VarChar(255)
+  panNo         String?   @map("pan_no") @db.VarChar(10)
+  aadharNo      String?   @map("aadhar_no") @db.VarChar(12)
+  dob           DateTime? @db.Date
+
+  // Professional Details
+  currentCompany           String? @map("current_company") @db.VarChar(255)
+  currentCompanyExperience String? @map("current_company_experience") @db.VarChar(50)
+  officialEmail            String? @map("official_email") @db.VarChar(255)
+  totalWorkExperience      String? @map("total_work_experience") @db.VarChar(50)
+  currentAddress           String? @map("current_address") @db.Text
+  postalAddress            String? @map("postal_address") @db.Text
+  homeType                 String? @map("home_type") @db.VarChar(50)
+
+  // References
+  reference1Name    String? @map("reference1_name") @db.VarChar(255)
+  reference1Mobile  String? @map("reference1_mobile") @db.VarChar(15)
+  reference1Address String? @map("reference1_address") @db.Text
+  reference2Name    String? @map("reference2_name") @db.VarChar(255)
+  reference2Mobile  String? @map("reference2_mobile") @db.VarChar(15)
+  reference2Address String? @map("reference2_address") @db.Text
+
+  // Nominee Details
+  nomineeName        String?   @map("nominee_name") @db.VarChar(255)
+  nomineeRelation    String?   @map("nominee_relation") @db.VarChar(100)
+  nomineeDateOfBirth DateTime? @map("nominee_date_of_birth") @db.Date
+
+  // Loan Details
+  loanType   LoanType  @map("loan_type")
+  loanAmount Decimal   @map("loan_amount") @db.Decimal(15, 2)
+  caseType   CaseType? @map("case_type")
+
+  // Relationships (IDs)
+  connectorId    String  @map("connector_id")
+  dsaId          String? @map("dsa_id")
+  bankId         String  @map("bank_id")
+  leadOwner      String  @map("lead_owner")
+  salesManager   String? @map("sales_manager") @db.VarChar(255)
+  organizationId String? @map("organization_id")
+
+  // Status & Tracking
+  status    LoanStatus @default(login)
+  createdBy String?    @map("created_by")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  // Additional fields
+  location         String?  @map("location") @db.VarChar(255)
+  subventionAmount Decimal? @map("subvention_amount") @db.Decimal(15, 2)
+  pdfUrl           String?  @map("pdf_url")
+
+  // Relations
+  connector     User             @relation("CustomerConnector", fields: [connectorId], references: [id])
+  creator       User?            @relation("CustomerCreator", fields: [createdBy], references: [id])
+  leadOwnerUser User             @relation("CustomerLeadOwner", fields: [leadOwner], references: [id])
+  dsa           Dsa?             @relation(fields: [dsaId], references: [id])
+  bank          Bank             @relation(fields: [bankId], references: [id])
+  organization  Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  remarks       CustomerRemark[]
+  payoutLedger  PayoutLedger[]
+
+  @@index([applicationDate])
+  @@index([bankId])
+  @@index([connectorId])
+  @@index([createdBy])
+  @@index([dsaId])
+  @@index([leadOwner])
+  @@index([organizationId])
+  @@index([status])
+  @@map("customers")
+}
+
+// Banks Table
+model Bank {
+  id             String   @id @default(uuid())
+  name           String   @unique @db.VarChar(255)
+  isActive       Boolean  @default(true) @map("is_active")
+  organizationId String?  @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customers       Customer[]
+  dsaBankDetails  DsaBankDetail[]
+  userBankDetails UserBankDetail[]
+
+  @@index([organizationId])
+  @@map("banks")
+}
+
+// DSA (Direct Selling Agent) Table
+model Dsa {
+  id             String  @id @default(uuid())
+  name           String  @unique @db.VarChar(255)
+  isActive       Boolean @default(true) @map("is_active")
+  organizationId String? @map("organization_id")
+
+  // Company Details
+  companyName String? @map("company_name") @db.VarChar(255)
+  email       String? @db.VarChar(255)
+  gstin       String? @db.VarChar(15)
+  address     String? @db.Text
+  city        String? @db.VarChar(100)
+  stateName   String? @map("state_name") @db.VarChar(100)
+  stateCode   String? @map("state_code") @db.VarChar(2)
+  pinCode     String? @map("pin_code") @db.VarChar(6)
+
+>>>>>>> Stashed changes
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
+<<<<<<< Updated upstream
   bankDetails DsaBankDetail[]
   customers   Customer[]
 
@@ -106,6 +377,18 @@ model Dsa {
 }
 
 // DSA Bank Details
+=======
+  organization Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customers    Customer[]
+  bankDetails  DsaBankDetail[]
+  invoices     DsaInvoice[]
+
+  @@index([organizationId])
+  @@map("dsas")
+}
+
+// DSA Bank Details (Junction table for DSA-Bank with payout ratios)
+>>>>>>> Stashed changes
 model DsaBankDetail {
   id          String   @id @default(uuid())
   dsaId       String   @map("dsa_id")
@@ -113,6 +396,7 @@ model DsaBankDetail {
   loanType    LoanType @map("loan_type")
   payoutRatio Decimal  @map("payout_ratio") @db.Decimal(5, 2)
   createdAt   DateTime @default(now()) @map("created_at")
+<<<<<<< Updated upstream
 
   // Relations
   dsa  Dsa  @relation(fields: [dsaId], references: [id], onDelete: Cascade)
@@ -172,15 +456,128 @@ model Customer {
 }
 
 // Customer Remarks Table
+=======
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  dsa  Dsa  @relation(fields: [dsaId], references: [id], onDelete: Cascade)
+  bank Bank @relation(fields: [bankId], references: [id])
+
+  @@unique([dsaId, bankId, loanType])
+  @@index([dsaId])
+  @@index([bankId])
+  @@map("dsa_bank_details")
+}
+
+// User Bank Details (for connector payout ratios)
+model UserBankDetail {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  bankId      String   @map("bank_id")
+  loanType    LoanType @map("loan_type")
+  payoutRatio Decimal  @map("payout_ratio") @db.Decimal(5, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank Bank @relation(fields: [bankId], references: [id])
+
+  @@unique([userId, bankId, loanType])
+  @@index([userId])
+  @@index([bankId])
+  @@map("user_bank_details")
+}
+
+// Payout Ledger (Financial transactions for connector payouts)
+model PayoutLedger {
+  id              String   @id @default(uuid())
+  customerId      String   @map("customer_id")
+  connectorId     String   @map("connector_id")
+  transactionType String   @map("transaction_type") @db.VarChar(20) // 'debit' or 'credit'
+  amount          Decimal  @db.Decimal(15, 2)
+  balance         Decimal  @db.Decimal(15, 2)
+  narration       String   @db.Text
+  createdBy       String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  connector User     @relation("PayoutConnector", fields: [connectorId], references: [id])
+  creator   User     @relation("PayoutCreator", fields: [createdBy], references: [id])
+
+  @@index([customerId])
+  @@index([connectorId])
+  @@index([createdAt])
+  @@map("payout_ledger")
+}
+
+// Payout PDF Records
+model PayoutPDF {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  pdfUrl      String   @map("pdf_url") @db.Text
+  startDate   DateTime @map("start_date") @db.Date
+  endDate     DateTime @map("end_date") @db.Date
+  totalAmount Decimal  @map("total_amount") @db.Decimal(15, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("payout_pdfs")
+}
+
+// DSA Invoices (GST-compliant invoices for DSA commissions)
+model DsaInvoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique @map("invoice_number") @db.VarChar(50)
+  dsaId         String   @map("dsa_id")
+  invoiceDate   DateTime @map("invoice_date") @db.Date
+  issuedById    String   @map("issued_by_id")
+
+  // Invoice amounts
+  taxableAmount Decimal @map("taxable_amount") @db.Decimal(15, 2)
+  cgstRate      Decimal @map("cgst_rate") @db.Decimal(5, 2)
+  cgstAmount    Decimal @map("cgst_amount") @db.Decimal(15, 2)
+  sgstRate      Decimal @map("sgst_rate") @db.Decimal(5, 2)
+  sgstAmount    Decimal @map("sgst_amount") @db.Decimal(15, 2)
+  roundOff      Decimal @map("round_off") @db.Decimal(10, 2)
+  totalAmount   Decimal @map("total_amount") @db.Decimal(15, 2)
+  hsnSac        String  @map("hsn_sac") @db.VarChar(10)
+
+  pdfUrl    String?  @map("pdf_url")
+  status    String   @default("issued") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  dsa      Dsa  @relation(fields: [dsaId], references: [id], onDelete: Cascade)
+  issuedBy User @relation(fields: [issuedById], references: [id])
+
+  @@index([dsaId])
+  @@index([invoiceDate])
+  @@map("dsa_invoices")
+}
+
+// Customer Remarks/Notes
+>>>>>>> Stashed changes
 model CustomerRemark {
   id         String   @id @default(uuid())
   customerId String   @map("customer_id")
   remark     String   @db.Text
+<<<<<<< Updated upstream
   createdBy  String?  @map("created_by")
+=======
+  addedBy    String   @map("added_by")
+>>>>>>> Stashed changes
   createdAt  DateTime @default(now()) @map("created_at")
 
   // Relations
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+<<<<<<< Updated upstream
   user     User?    @relation(fields: [createdBy], references: [id])
 
   @@index([customerId])
@@ -188,17 +585,36 @@ model CustomerRemark {
 }
 
 // Password Reset Tokens Table
+=======
+  user     User     @relation(fields: [addedBy], references: [id])
+
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("customer_remarks")
+}
+
+// Password Reset Tokens
+>>>>>>> Stashed changes
 model PasswordResetToken {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
   token     String   @unique @db.VarChar(255)
   expiresAt DateTime @map("expires_at")
+<<<<<<< Updated upstream
   used      Boolean  @default(false)
+=======
+>>>>>>> Stashed changes
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+<<<<<<< Updated upstream
   @@index([token])
+=======
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+>>>>>>> Stashed changes
   @@map("password_reset_tokens")
 }
