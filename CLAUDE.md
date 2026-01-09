@@ -4,185 +4,312 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LoanMS is a full-stack loan management system with a React TypeScript frontend and Node.js + PostgreSQL backend. The application manages loan applications with role-based access control (Admin, BackOffice, Connector) and tracks loans through 7 statuses: login, rejected, approved, disbursed, hold, relook, drop.
+LoanMS is a multi-tenant SaaS loan management system with organization-based data isolation, subscription billing, and role-based access control. The system consists of a React frontend (Vite + TypeScript + shadcn/ui) and an Express backend (TypeScript + Prisma + PostgreSQL).
+
+**Key URLs:**
+- Frontend: http://localhost:8080
+- Backend API: http://localhost:5000
+- API Base: http://localhost:5000/api
 
 ## Development Commands
 
 ### Frontend (Root Directory)
 ```bash
-npm run dev          # Start Vite dev server (port 8080)
-npm run build        # Production build
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
+npm run dev           # Start dev server (port 8080)
+npm run build         # Production build
+npm run build:dev     # Development build
+npm run lint          # Run ESLint
+npm run preview       # Preview production build
 ```
 
-### Backend (backend/ Directory)
+### Backend (backend/ directory)
 ```bash
-cd backend
+npm run dev                  # Start dev server with auto-reload (port 5000)
+npm run build                # Compile TypeScript to dist/
+npm start                    # Run production build
 
-# Development
-npm run dev          # Start with hot reload (port 5000)
-npm run build        # Compile TypeScript to dist/
-npm start            # Run compiled production server
+# Prisma Database Commands
+npm run prisma:generate      # Generate Prisma Client (run after schema changes)
+npm run prisma:migrate       # Create and apply migration
+npm run prisma:deploy        # Deploy migrations (production)
+npm run prisma:studio        # Open Prisma Studio GUI
 
-# Database (Prisma)
-npm run prisma:generate  # Generate Prisma client
-npm run prisma:migrate   # Create/run migrations
-npm run prisma:studio    # Open database GUI (port 5555)
-npm run prisma:seed      # Seed database with sample data
-npm run prisma:reset     # Reset database (drops & recreates)
+# Setup Commands
+npm run setup                # Full setup: migrate + generate + create superadmin
+npm run setup:master         # Create master admin user only
+npx ts-node create-superadmin.ts      # Create organization superadmin
+npx ts-node create-master-admin.ts    # Create platform master admin
 ```
 
 ## Architecture
 
-### Backend Architecture (3-Layer Pattern)
+### Multi-Tenant Architecture
 
-**Controllers** (`backend/src/controllers/`) → Handle HTTP requests/responses
-**Services** (`backend/src/services/`) → Business logic and database operations
-**Routes** (`backend/src/routes/`) → Define API endpoints and middleware
+**Core Concept:** Every piece of data (except master_admin users) belongs to an Organization. Data isolation is enforced at the middleware level.
 
-Key architectural patterns:
-- **Middleware chain**: `authenticate` → `authorize(roles)` → `validate(schema)` → controller
-- **Role-based filtering**: Services check `req.user.role` to filter data (Connectors see only their customers)
-- **Prisma transactions**: Multi-step operations use `prisma.$transaction([])`
+**Role Hierarchy:**
+1. `master_admin` - Platform administrator (organizationId = NULL)
+   - Sees all organizations
+   - Manages billing and subscriptions
+   - Creates/deletes organizations
 
-### Database Schema (8 Tables)
+2. `superadmin` - Organization owner (assigned to specific org)
+   - Full access within their organization
+   - Cannot see other organizations' data
+   - Manages organization settings and users
 
-Core relationships:
-- `User` (1:N) → `Customer` via `connectorId`
-- `User` (1:N) → `UserBankDetail` (N:1) → `Bank` (connector-bank associations)
-- `Dsa` (1:N) → `DsaBankDetail` (N:1) → `Bank` (DSA-bank associations)
-- `Customer` (1:N) → `CustomerRemark`
+3. `admin` - Organization administrator
+   - Manages users, customers, banks, DSAs within org
 
-Enums: `UserRole`, `LoanStatus`, `LoanType` defined in `backend/prisma/schema.prisma`
+4. `backoffice` - Back-office staff
+   - Limited administrative access
 
-### Authentication Flow
+5. `connector` - Sales/connector staff
+   - Customer and loan management
 
-1. Login → `authService.login()` → verify password → generate JWT with `{userId, email, role}`
-2. Protected routes → `authenticate` middleware → verify JWT → populate `req.user`
-3. Role restrictions → `authorize(['admin', 'backoffice'])` middleware
+**Pricing Tiers:**
+- `starter`: ₹499/seat, 1-5 seats
+- `professional`: ₹899/seat, 5-25 seats
+- `enterprise`: ₹1499/seat, 10+ unlimited
 
-Token stored in `localStorage` as `auth_token` (frontend manages via `src/lib/api.ts`)
+### Request Flow (Backend)
 
-### Frontend API Integration
-
-Use pre-built API client in `src/lib/api.ts`:
-```typescript
-import { authApi, customersApi, dashboardApi } from '@/lib/api';
-
-// Login sets token in localStorage automatically
-const { data } = await authApi.login(email, password);
-setAuthToken(data.token);
-
-// All subsequent calls include token in Authorization header
-const customers = await customersApi.getCustomers();
+**Public Endpoints:**
+```
+Request → CORS → Body Parser → Route Handler
 ```
 
-Do NOT call `fetch()` directly - always use the API helper functions.
+**Protected Endpoints:**
+```
+Request → CORS → Body Parser → authenticate → organizationContext → authorize → Route Handler
+```
 
-## Environment Configuration
+**Middleware Chain:**
+1. `authenticate` - Verifies JWT token, sets req.user
+2. `organizationContext` - Injects req.organizationId (null for master_admin)
+3. `authorize(['role1', 'role2'])` - Checks user role permissions
 
-**Frontend** (`.env`):
-- `VITE_API_URL` - Backend API URL (default: `http://localhost:5000/api`)
-- `DATABASE_URL` - PostgreSQL connection string (only if running backend setup from frontend root)
+**Critical:** All protected routes MUST have both `authenticate` and `organizationContext` middleware applied in that order.
 
-**Backend** (`backend/.env`):
-- `DATABASE_URL` - PostgreSQL connection (format: `postgresql://user:pass@localhost:5432/loanms`)
-- `JWT_SECRET` - Min 32 chars for production
-- `PORT` - Server port (default: 5000)
-- `CORS_ORIGIN` - Frontend URL (default: `http://localhost:5173`)
+### Database Schema (Prisma)
 
-## Database Migrations
+**Multi-Tenancy Models:**
+- `Organization` - Tenant container with billing info
+- `Invoice` - Subscription invoices for organizations
+- `User` - Has nullable `organizationId` (null only for master_admin)
+- `Customer`, `Bank`, `Dsa` - All have required `organizationId`
 
-When modifying `backend/prisma/schema.prisma`:
-1. Run `npm run prisma:migrate` (creates migration in `prisma/migrations/`)
-2. Run `npm run prisma:generate` (updates Prisma client types)
-3. Restart backend server
+**Important Fields:**
+- `User.organizationId` - NULL for master_admin, required for all others
+- `Organization.status` - trial | active | suspended
+- `Invoice.invoiceNumber` - Auto-generated format: INV-YYYY-###
 
-If migrations fail: `npm run prisma:reset` (⚠️ deletes all data)
+**Schema Location:** `backend/prisma/schema.prisma`
 
-## Role-Based Access Rules
+### Frontend Context Architecture
 
-**Admin**: Full CRUD on all entities
-**BackOffice**: Create/update customers, view dashboard/reports
-**Connector**: Read-only own customers, add remarks
+**Authentication Flow:**
+```tsx
+AuthProvider (JWT token management)
+  → OrganizationProvider (multi-tenant org data)
+    → BillingProvider (subscription/invoice data)
+      → App Components
+```
 
-Middleware enforcement:
-- `authorize(['admin'])` - Admin only
-- `authorize(['admin', 'backoffice'])` - Admin or BackOffice
-- No middleware = All authenticated users
+**AuthContext** (`src/contexts/AuthContext.tsx`):
+- Manages JWT tokens in localStorage
+- Calls `/api/auth/login` for authentication
+- Persists user session across page refreshes
+- Provides `login()`, `logout()`, `user`, `role`, `isAuthenticated`
 
-Services apply additional filtering:
-- `customersService.getCustomers()` filters by `connectorId` if role is 'connector'
+**Critical:** Frontend now uses REAL backend API, not mock data. The AuthContext stores JWT tokens and makes actual HTTP requests.
 
-## API Response Format
+### API Endpoints Structure
 
-All endpoints return:
+**Authentication (Public):**
+- `POST /api/auth/login` - Login (returns JWT + user)
+- `GET /api/auth/me` - Get current user (requires auth)
+- `POST /api/signup` - Self-service organization signup
+
+**Organizations (Protected):**
+- `GET /api/organizations` - List all (master_admin only)
+- `POST /api/organizations` - Create organization (master_admin only)
+- `GET /api/organizations/:id` - Get details
+- `PUT /api/organizations/:id` - Update
+- `DELETE /api/organizations/:id` - Delete (master_admin only)
+- `GET /api/organizations/:id/stats` - Get statistics
+
+**Invoices (Protected):**
+- `GET /api/invoices` - List invoices (filtered by org)
+- `POST /api/invoices` - Create invoice (master_admin only)
+- `PUT /api/invoices/:id/status` - Update status (master_admin only)
+- `GET /api/invoices/analytics` - Billing analytics (master_admin only)
+
+## Important Implementation Details
+
+### Creating New Protected Routes
+
+When adding new routes that need organization-scoped data:
+
+1. **Apply middleware in correct order:**
 ```typescript
-{
-  success: boolean,
-  data?: T,
-  message?: string,
-  error?: string
+router.use(authenticate);           // First: verify JWT
+router.use(organizationContext);    // Second: inject organizationId
+router.get('/', authorize(['admin']), handler); // Third: check role
+```
+
+2. **Service methods must accept organizationId:**
+```typescript
+async getItems(query, userId, userRole, organizationId: string | null) {
+  const where: any = {};
+
+  // Multi-tenant filtering
+  if (userRole !== 'master_admin' && organizationId) {
+    where.organizationId = organizationId;
+  }
+
+  // Additional filters...
 }
 ```
 
-Paginated endpoints add:
+3. **Controllers pass organizationId to services:**
 ```typescript
-{
-  data: T[],
-  pagination: { page, limit, total, totalPages }
+async getItems(req: AuthRequest, res: Response) {
+  const result = await service.getItems(
+    req.query,
+    req.user?.userId,
+    req.user?.role,
+    req.organizationId  // From organizationContext middleware
+  );
 }
 ```
 
-## Common Patterns
+### Database Migrations
 
-### Adding a New API Endpoint
-
-1. Define Zod schema in `backend/src/utils/validators.ts`
-2. Create service method in `backend/src/services/[entity].service.ts`
-3. Create controller method in `backend/src/controllers/[entity].controller.ts`
-4. Add route in `backend/src/routes/[entity].routes.ts` with middleware
-5. Import route in `backend/src/app.ts`
-6. Add frontend helper in `src/lib/api.ts`
-
-### Role-Based Data Filtering
-
-Always pass `userId` and `userRole` to service methods from controllers:
-```typescript
-const result = await service.getData(
-  query,
-  req.user?.userId,
-  req.user?.role
-);
+**After schema changes:**
+```bash
+cd backend
+npx prisma migrate dev --name descriptive_migration_name
+npx prisma generate
 ```
 
-Service applies filtering:
-```typescript
-if (userRole === 'connector') {
-  where.connectorId = userId;
-}
+**Important:** Always generate Prisma Client after migrations. The backend will fail if the client is out of sync with the schema.
+
+### User Creation Scripts
+
+**Master Admin (Platform):**
+```bash
+cd backend
+npx ts-node create-master-admin.ts
+# Email: master@loanms.com
+# Password: MasterAdmin@123
+# Role: master_admin
+# organizationId: NULL
 ```
 
-## Demo Credentials
+**Superadmin (Organization):**
+```bash
+cd backend
+npx ts-node create-superadmin.ts
+# Email: superadmin@loanms.com
+# Password: Admin@123
+# Role: superadmin
+# organizationId: (assigned to default org)
+```
 
-- **Admin**: admin@loanms.com / password123
-- **BackOffice**: backoffice@loanms.com / password123
-- **Connector**: connector@loanms.com / password123
+### Environment Setup
 
-Seed script creates 50 sample customers, 7 banks, 2 DSAs.
+**Backend .env file:**
+```env
+PORT=5000
+DATABASE_URL="postgresql://user:pass@localhost:5432/loanms?schema=public"
+JWT_SECRET=your-secret-key-here
+JWT_EXPIRES_IN=24h
+CORS_ORIGIN=http://localhost:8080
+```
 
-## Troubleshooting
+**Important:** The `DATABASE_URL` must be set correctly for Prisma to connect to PostgreSQL.
 
-**Database connection errors**: Verify PostgreSQL is running and `DATABASE_URL` is correct
-**Port conflicts**: Frontend uses 8080, backend uses 5000, Prisma Studio uses 5555
-**Prisma errors**: Run `npm run prisma:generate` after schema changes
-**JWT errors**: Ensure JWT_SECRET is set and tokens aren't expired (24h validity)
+## File Structure (Key Areas)
 
-## Important Notes
+### Backend Structure
+```
+backend/
+├── src/
+│   ├── app.ts                    # Express app + middleware setup
+│   ├── index.ts                  # Server entry point
+│   ├── config/
+│   │   ├── database.ts          # Prisma client singleton
+│   │   └── constants.ts         # Pricing tiers, limits, enums
+│   ├── middleware/
+│   │   ├── auth.ts              # authenticate + authorize
+│   │   └── organizationContext.ts  # Multi-tenant data isolation
+│   ├── controllers/             # HTTP request handlers
+│   ├── services/                # Business logic
+│   ├── routes/                  # Route definitions
+│   ├── types/                   # TypeScript type definitions
+│   └── utils/
+│       ├── jwt.ts               # Token generation/verification
+│       ├── password.ts          # Password hashing
+│       └── validators.ts        # Zod schemas
+├── prisma/
+│   └── schema.prisma            # Database schema
+└── create-*.ts                  # User creation scripts
+```
 
-- Frontend currently uses mock data - integrate with backend by replacing mock imports with API calls from `src/lib/api.ts`
-- All passwords hashed with bcrypt (10 salt rounds)
-- Winston logs stored in `backend/logs/` (error.log, combined.log)
-- Prisma client auto-generated - never edit `node_modules/@prisma/client`
-- Customer remarks are append-only (create only, no update/delete)
+### Frontend Structure
+```
+src/
+├── App.tsx                      # Routes + Protected routes
+├── main.tsx                     # App entry point
+├── contexts/
+│   ├── AuthContext.tsx          # Authentication (real API)
+│   ├── OrganizationContext.tsx  # Organization data
+│   └── BillingContext.tsx       # Billing/invoices
+├── components/
+│   ├── auth/                    # Login/signup components
+│   ├── layout/                  # DashboardLayout
+│   └── ui/                      # shadcn/ui components
+├── pages/                       # Route page components
+└── types/                       # TypeScript types
+```
+
+## Known Issues & Gotchas
+
+1. **AuthContext changed from mock to real API:** The frontend now calls `http://localhost:5000/api/auth/login`. Ensure backend is running.
+
+2. **Some routes are commented out in backend/src/app.ts:** Profile, payouts, dsa-invoices, and chatbot routes are disabled pending service implementation.
+
+3. **organizationId filtering is manual:** Services must manually check `userRole !== 'master_admin'` before applying organizationId filters. This is intentional for flexibility.
+
+4. **JWT tokens in localStorage:** Tokens persist across sessions. Clear localStorage to force re-login during development.
+
+5. **Prisma Client must be regenerated:** After any schema.prisma changes, run `npx prisma generate` or the backend will fail with "Unknown model" errors.
+
+6. **Master admin has no organization:** The master_admin role is special - it has `organizationId = NULL` and bypasses all organization filtering.
+
+## Testing Authentication
+
+**Test Login (Backend):**
+```bash
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"superadmin@loanms.com","password":"Admin@123"}'
+```
+
+**Test with Token:**
+```bash
+TOKEN="your-jwt-token-here"
+curl http://localhost:5000/api/auth/me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Documentation Files
+
+Comprehensive implementation documentation is available in the repository:
+- `backend/MULTI-TENANCY-IMPLEMENTATION.md` - Complete multi-tenancy architecture
+- `backend/BACKEND-SETUP-COMPLETE.md` - Backend setup and endpoints
+- `backend/INTEGRATION-GUIDE.md` - Step-by-step integration instructions
+- Multiple `*-COMPLETE.md` files documenting feature implementations
+
+Refer to these when implementing new features or troubleshooting issues.
