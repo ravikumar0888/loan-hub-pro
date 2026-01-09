@@ -12,7 +12,34 @@ export class SignupController {
    */
   async signup(req: Request, res: Response, next: NextFunction) {
     try {
-      const organization = await organizationsService.createOrganization(req.body);
+      // Map frontend field names to service field names
+      const {
+        organizationName,
+        organizationEmail,
+        organizationPhone,
+        superAdminEmail,
+        superAdminPassword,
+        superAdminName,
+        ...rest
+      } = req.body;
+
+      // Parse super admin name
+      const nameParts = superAdminName?.split(' ') || [];
+      const adminFirstName = nameParts[0] || 'Admin';
+      const adminLastName = nameParts.slice(1).join(' ') || 'User';
+
+      const organizationData = {
+        name: organizationName,
+        email: organizationEmail,
+        phone: organizationPhone,
+        adminEmail: superAdminEmail,
+        adminPassword: superAdminPassword,
+        adminFirstName,
+        adminLastName,
+        ...rest, // Include any other fields like address, website, pricingTier, seats
+      };
+
+      const organization = await organizationsService.createOrganization(organizationData);
 
       // Generate JWT token for the super admin
       const token = generateToken({
