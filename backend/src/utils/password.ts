@@ -2,15 +2,6 @@ import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
 
-<<<<<<< Updated upstream
-export const hashPassword = async (password: string): Promise<string> => {
-  return bcrypt.hash(password, SALT_ROUNDS);
-};
-
-export const comparePassword = async (password: string, hash: string): Promise<boolean> => {
-  return bcrypt.compare(password, hash);
-};
-=======
 /**
  * Hash a plain text password
  */
@@ -39,4 +30,3 @@ export function generateRandomPassword(length: number = 12): string {
 
   return password;
 }
->>>>>>> Stashed changes
