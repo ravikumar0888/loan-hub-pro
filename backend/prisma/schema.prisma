@@ -1,9 +1,5 @@
-<<<<<<< Updated upstream
-// Prisma Schema for LoanMS - Loan Management System
-=======
 // Prisma Schema for LoanMS - Multi-Tenant SaaS Platform
 // This schema maps camelCase names (used in backend code) to snake_case database columns
->>>>>>> Stashed changes
 
 generator client {
   provider = "prisma-client-js"
@@ -14,13 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-<<<<<<< Updated upstream
-// Enums
-enum UserRole {
-  admin
-  backoffice
-  connector
-=======
 // ==================== ENUMS ====================
 
 enum UserRole {
@@ -49,7 +38,6 @@ enum PricingTier {
   starter // ₹499/seat, 1-5 seats
   professional // ₹899/seat, 5-25 seats
   enterprise // ₹1499/seat, 10+ unlimited
->>>>>>> Stashed changes
 }
 
 enum LoanStatus {
@@ -68,71 +56,6 @@ enum LoanType {
   BL // Business Loan
 }
 
-<<<<<<< Updated upstream
-// Users Table
-model User {
-  id           String   @id @default(uuid())
-  firstName    String   @map("first_name") @db.VarChar(100)
-  lastName     String   @map("last_name") @db.VarChar(100)
-  email        String   @unique @db.VarChar(255)
-  mobile       String   @unique @db.VarChar(15)
-  passwordHash String   @map("password_hash") @db.VarChar(255)
-  role         UserRole
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  customers          Customer[]
-  bankDetails        UserBankDetail[]
-  customerRemarks    CustomerRemark[]
-  passwordResetTokens PasswordResetToken[]
-
-  @@index([email])
-  @@index([role])
-  @@map("users")
-}
-
-// Banks Table
-model Bank {
-  id        String   @id @default(uuid())
-  name      String   @unique @db.VarChar(255)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  userBankDetails UserBankDetail[]
-  dsaBankDetails  DsaBankDetail[]
-  customers       Customer[]
-
-  @@map("banks")
-}
-
-// User Bank Details (for Connectors)
-model UserBankDetail {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  bankId      String   @map("bank_id")
-  loanType    LoanType @map("loan_type")
-  payoutRatio Decimal  @map("payout_ratio") @db.Decimal(5, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bank Bank @relation(fields: [bankId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, bankId, loanType])
-  @@index([userId])
-  @@map("user_bank_details")
-}
-
-// DSA (Direct Selling Agents) Table
-model Dsa {
-  id        String   @id @default(uuid())
-  name      String   @unique @db.VarChar(255)
-  isActive  Boolean  @default(true) @map("is_active")
-=======
 enum CaseType {
   fresh
   bt // Balance Transfer
@@ -364,20 +287,10 @@ model Dsa {
   stateCode   String? @map("state_code") @db.VarChar(2)
   pinCode     String? @map("pin_code") @db.VarChar(6)
 
->>>>>>> Stashed changes
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-<<<<<<< Updated upstream
-  bankDetails DsaBankDetail[]
-  customers   Customer[]
-
-  @@map("dsas")
-}
-
-// DSA Bank Details
-=======
   organization Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customers    Customer[]
   bankDetails  DsaBankDetail[]
@@ -388,7 +301,6 @@ model Dsa {
 }
 
 // DSA Bank Details (Junction table for DSA-Bank with payout ratios)
->>>>>>> Stashed changes
 model DsaBankDetail {
   id          String   @id @default(uuid())
   dsaId       String   @map("dsa_id")
@@ -396,67 +308,6 @@ model DsaBankDetail {
   loanType    LoanType @map("loan_type")
   payoutRatio Decimal  @map("payout_ratio") @db.Decimal(5, 2)
   createdAt   DateTime @default(now()) @map("created_at")
-<<<<<<< Updated upstream
-
-  // Relations
-  dsa  Dsa  @relation(fields: [dsaId], references: [id], onDelete: Cascade)
-  bank Bank @relation(fields: [bankId], references: [id], onDelete: Cascade)
-
-  @@unique([dsaId, bankId, loanType])
-  @@index([dsaId])
-  @@map("dsa_bank_details")
-}
-
-// Customers Table
-model Customer {
-  id                    String     @id @default(uuid())
-  applicationId         String?    @unique @map("application_id") @db.VarChar(50)
-  name                  String     @db.VarChar(255)
-  mobile                String     @db.VarChar(15)
-  email                 String?    @db.VarChar(255)
-  motherName            String?    @map("mother_name") @db.VarChar(255)
-  spouseName            String?    @map("spouse_name") @db.VarChar(255)
-  personalEmail         String?    @map("personal_email") @db.VarChar(255)
-  officialEmail         String?    @map("official_email") @db.VarChar(255)
-  totalWorkExperience   String?    @map("total_work_experience") @db.VarChar(50)
-  currentCompanyExp     String?    @map("current_company_exp") @db.VarChar(50)
-  currentAddress        String?    @map("current_address") @db.Text
-  postalAddress         String?    @map("postal_address") @db.Text
-  homeType              String?    @map("home_type") @db.VarChar(50)
-  reference1Name        String?    @map("reference1_name") @db.VarChar(255)
-  reference1Mobile      String?    @map("reference1_mobile") @db.VarChar(15)
-  reference1Address     String?    @map("reference1_address") @db.Text
-  reference2Name        String?    @map("reference2_name") @db.VarChar(255)
-  reference2Mobile      String?    @map("reference2_mobile") @db.VarChar(15)
-  reference2Address     String?    @map("reference2_address") @db.Text
-  loanType              LoanType   @map("loan_type")
-  loanAmount            Decimal    @map("loan_amount") @db.Decimal(15, 2)
-  connectorId           String?    @map("connector_id")
-  dsaId                 String?    @map("dsa_id")
-  bankId                String?    @map("bank_id")
-  leadOwner             String?    @map("lead_owner") @db.VarChar(255)
-  salesManager          String?    @map("sales_manager") @db.VarChar(255)
-  status                LoanStatus
-  applicationDate       DateTime   @default(now()) @map("application_date") @db.Date
-  createdAt             DateTime   @default(now()) @map("created_at")
-  updatedAt             DateTime   @updatedAt @map("updated_at")
-
-  // Relations
-  connector User?            @relation(fields: [connectorId], references: [id])
-  dsa       Dsa?             @relation(fields: [dsaId], references: [id])
-  bank      Bank?            @relation(fields: [bankId], references: [id])
-  remarks   CustomerRemark[]
-
-  @@index([status])
-  @@index([connectorId])
-  @@index([dsaId])
-  @@index([bankId])
-  @@index([applicationDate])
-  @@map("customers")
-}
-
-// Customer Remarks Table
-=======
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
@@ -563,29 +414,15 @@ model DsaInvoice {
 }
 
 // Customer Remarks/Notes
->>>>>>> Stashed changes
 model CustomerRemark {
   id         String   @id @default(uuid())
   customerId String   @map("customer_id")
   remark     String   @db.Text
-<<<<<<< Updated upstream
-  createdBy  String?  @map("created_by")
-=======
   addedBy    String   @map("added_by")
->>>>>>> Stashed changes
   createdAt  DateTime @default(now()) @map("created_at")
 
   // Relations
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-<<<<<<< Updated upstream
-  user     User?    @relation(fields: [createdBy], references: [id])
-
-  @@index([customerId])
-  @@map("customer_remarks")
-}
-
-// Password Reset Tokens Table
-=======
   user     User     @relation(fields: [addedBy], references: [id])
 
   @@index([customerId])
@@ -594,27 +431,18 @@ model CustomerRemark {
 }
 
 // Password Reset Tokens
->>>>>>> Stashed changes
 model PasswordResetToken {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
   token     String   @unique @db.VarChar(255)
   expiresAt DateTime @map("expires_at")
-<<<<<<< Updated upstream
-  used      Boolean  @default(false)
-=======
->>>>>>> Stashed changes
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-<<<<<<< Updated upstream
-  @@index([token])
-=======
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
->>>>>>> Stashed changes
   @@map("password_reset_tokens")
 }
