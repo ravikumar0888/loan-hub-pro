@@ -3,8 +3,13 @@ import { Prisma } from '@prisma/client';
 import { ReportQuery } from '../types';
 
 export class ReportsService {
-  async generateReport(query: ReportQuery, userId?: string, userRole?: string) {
+  async generateReport(query: ReportQuery, userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = {};
+
+    // Multi-tenant filtering
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     // Role-based filtering
     if (userRole === 'connector') {
@@ -51,8 +56,13 @@ export class ReportsService {
     return customers;
   }
 
-  async getReportSummary(query: ReportQuery, userId?: string, userRole?: string) {
+  async getReportSummary(query: ReportQuery, userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = {};
+
+    // Multi-tenant filtering
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     // Role-based filtering
     if (userRole === 'connector') {

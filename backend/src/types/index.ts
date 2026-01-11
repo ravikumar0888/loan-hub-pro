@@ -92,6 +92,12 @@ export interface UpdateOrganizationDto {
   pricingTier?: PricingTier;
   seats?: number;
   status?: OrganizationStatus;
+  // Super admin updates (optional)
+  adminFirstName?: string;
+  adminLastName?: string;
+  adminEmail?: string;
+  adminMobile?: string;
+  adminPassword?: string;
 }
 
 // ==================== INVOICE TYPES ====================

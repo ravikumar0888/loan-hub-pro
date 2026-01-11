@@ -4,35 +4,37 @@ import { authenticate } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
 import { validate } from '../middleware/validator';
 import { createCustomerSchema, updateCustomerSchema, addRemarkSchema } from '../utils/validators';
+import { organizationContext } from '../middleware/organizationContext';
 
 const router = Router();
 const customersController = new CustomersController();
 
-// All routes require authentication
+// All routes require authentication and organization context
 router.use(authenticate);
+router.use(organizationContext);
 
 // Get customers - all roles (filtered by role in service)
 router.get('/', customersController.getCustomers.bind(customersController));
 router.get('/:id', customersController.getCustomerById.bind(customersController));
 
-// Create customer - admin and backoffice only
+// Create customer - superadmin, admin and backoffice only
 router.post(
   '/',
-  authorize(['admin', 'backoffice']),
+  authorize(['superadmin', 'admin', 'backoffice']),
   validate(createCustomerSchema),
   customersController.createCustomer.bind(customersController)
 );
 
-// Update customer - admin and backoffice only
+// Update customer - superadmin, admin and backoffice only
 router.put(
   '/:id',
-  authorize(['admin', 'backoffice']),
+  authorize(['superadmin', 'admin', 'backoffice']),
   validate(updateCustomerSchema),
   customersController.updateCustomer.bind(customersController)
 );
 
-// Delete customer - admin only
-router.delete('/:id', authorize(['admin']), customersController.deleteCustomer.bind(customersController));
+// Delete customer - superadmin and admin only
+router.delete('/:id', authorize(['superadmin', 'admin']), customersController.deleteCustomer.bind(customersController));
 
 // Remarks management - all authenticated users can add/view
 router.post('/:id/remarks', validate(addRemarkSchema), customersController.addRemark.bind(customersController));

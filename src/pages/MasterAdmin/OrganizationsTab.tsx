@@ -52,6 +52,12 @@ export default function OrganizationsTab() {
     pricingTier: 'starter' as PricingTier,
     seats: 1,
     status: 'active' as 'active' | 'suspended' | 'trial',
+    // Super admin fields
+    firstName: '',
+    lastName: '',
+    adminEmail: '',
+    mobile: '',
+    password: '',
   });
 
   const filteredOrganizations = organizations.filter(
@@ -70,6 +76,11 @@ export default function OrganizationsTab() {
       pricingTier: 'starter',
       seats: 1,
       status: 'active',
+      firstName: '',
+      lastName: '',
+      adminEmail: '',
+      mobile: '',
+      password: '',
     });
     setEditingOrg(null);
   };
@@ -81,6 +92,7 @@ export default function OrganizationsTab() {
 
   const openEditDialog = (org: Organization) => {
     setEditingOrg(org);
+    const superAdmin = org.users?.[0];
     setFormData({
       name: org.name,
       email: org.email,
@@ -90,6 +102,11 @@ export default function OrganizationsTab() {
       pricingTier: org.pricingTier,
       seats: org.seats,
       status: org.status,
+      firstName: superAdmin?.firstName || '',
+      lastName: superAdmin?.lastName || '',
+      adminEmail: superAdmin?.email || '',
+      mobile: superAdmin?.mobile || '',
+      password: '', // Don't populate password on edit
     });
     setIsDialogOpen(true);
   };
@@ -100,15 +117,51 @@ export default function OrganizationsTab() {
       return;
     }
 
+    // Validate super admin fields for create
+    if (!editingOrg) {
+      if (!formData.firstName || !formData.lastName || !formData.adminEmail || !formData.mobile || !formData.password) {
+        toast.error('Please fill in all super admin fields');
+        return;
+      }
+    }
+
     try {
       if (editingOrg) {
-        await updateOrganization(editingOrg.id, formData);
+        // Build update data
+        const updateData: any = {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          website: formData.website,
+          pricingTier: formData.pricingTier,
+          seats: formData.seats,
+          status: formData.status,
+        };
+
+        // Include super admin updates if provided
+        if (formData.firstName) updateData.adminFirstName = formData.firstName;
+        if (formData.lastName) updateData.adminLastName = formData.lastName;
+        if (formData.adminEmail) updateData.adminEmail = formData.adminEmail;
+        if (formData.mobile) updateData.adminMobile = formData.mobile;
+        if (formData.password) updateData.adminPassword = formData.password;
+
+        await updateOrganization(editingOrg.id, updateData);
         toast.success('Organization updated successfully');
       } else {
         await createOrganization({
-          ...formData,
-          superAdminEmail: formData.email,
-          superAdminPassword: 'Admin@123', // Default password, should be changed by user
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          website: formData.website,
+          pricingTier: formData.pricingTier,
+          seats: formData.seats,
+          adminFirstName: formData.firstName,
+          adminLastName: formData.lastName,
+          adminEmail: formData.adminEmail,
+          adminMobile: formData.mobile,
+          adminPassword: formData.password,
         });
         toast.success('Organization created successfully');
       }
@@ -258,95 +311,164 @@ export default function OrganizationsTab() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Organization Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter organization name"
-              />
-            </div>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            {/* Organization Details */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground">Organization Details</h3>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                placeholder="admin@company.com"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone *</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="9876543210"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                placeholder="City, State"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Pricing Plan</Label>
+                <Label htmlFor="name">Organization Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter organization name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Organization Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="info@company.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Organization Phone *</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="9876543210"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="City, State"
+                />
+              </div>
+            </div>
+
+            {/* Super Admin Details */}
+            <div className="space-y-3 border-t pt-3">
+              <h3 className="text-sm font-semibold text-muted-foreground">Super Admin Details</h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={e => setFormData({ ...formData, firstName: e.target.value })}
+                    placeholder="John"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="adminEmail">Admin Email *</Label>
+                <Input
+                  id="adminEmail"
+                  type="email"
+                  value={formData.adminEmail}
+                  onChange={e => setFormData({ ...formData, adminEmail: e.target.value })}
+                  placeholder="admin@company.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mobile">Mobile Number *</Label>
+                <Input
+                  id="mobile"
+                  value={formData.mobile}
+                  onChange={e => setFormData({ ...formData, mobile: e.target.value })}
+                  placeholder="9876543210"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password {!editingOrg && '*'}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={editingOrg ? "Leave blank to keep current" : "Enter password"}
+                />
+              </div>
+            </div>
+
+            {/* Plan & Status */}
+            <div className="space-y-3 border-t pt-3">
+              <h3 className="text-sm font-semibold text-muted-foreground">Plan & Status</h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Pricing Plan *</Label>
+                  <Select
+                    value={formData.pricingTier}
+                    onValueChange={value => setFormData({ ...formData, pricingTier: value as PricingTier })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pricingPlans.map(plan => (
+                        <SelectItem key={plan.id} value={plan.tier}>
+                          {plan.name} (₹{plan.pricePerSeat}/seat)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="seats">Seats *</Label>
+                  <Input
+                    id="seats"
+                    type="number"
+                    min={1}
+                    value={formData.seats}
+                    onChange={e => setFormData({ ...formData, seats: parseInt(e.target.value) || 1 })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
                 <Select
-                  value={formData.pricingTier}
-                  onValueChange={value => setFormData({ ...formData, pricingTier: value as PricingTier })}
+                  value={formData.status}
+                  onValueChange={value => setFormData({ ...formData, status: value as 'active' | 'suspended' | 'trial' })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {pricingPlans.map(plan => (
-                      <SelectItem key={plan.id} value={plan.tier}>
-                        {plan.name} (₹{plan.pricePerSeat}/seat)
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="trial">Trial</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="seats">Seats</Label>
-                <Input
-                  id="seats"
-                  type="number"
-                  min={1}
-                  value={formData.seats}
-                  onChange={e => setFormData({ ...formData, seats: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={value => setFormData({ ...formData, status: value as 'active' | 'suspended' | 'trial' })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="trial">Trial</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
 

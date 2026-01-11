@@ -143,6 +143,7 @@ export default function SignupPage() {
         superAdminEmail: formData.email,
         superAdminPassword: formData.password,
         superAdminName: `${formData.firstName} ${formData.lastName}`,
+        superAdminMobile: formData.mobile,
       });
 
       toast.success('Organization created successfully! You can now login with your credentials.');

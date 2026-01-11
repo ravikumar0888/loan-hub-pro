@@ -11,8 +11,14 @@ import authRoutes from './routes/auth.routes';
 import signupRoutes from './routes/signup.routes';
 import organizationsRoutes from './routes/organizations.routes';
 import invoicesRoutes from './routes/invoices.routes';
+import customersRoutes from './routes/customers.routes';
+import banksRoutes from './routes/banks.routes';
+import usersRoutes from './routes/users.routes';
+import dsasRoutes from './routes/dsas.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import reportsRoutes from './routes/reports.routes';
+import payoutsRoutes from './routes/payouts.routes';
 // import profileRoutes from './routes/profile.routes';
-// import payoutsRoutes from './routes/payouts.routes';
 // import dsaInvoiceRoutes from './routes/dsaInvoice.routes';
 // import chatbotRoutes from './routes/chatbot.routes';
 
@@ -71,14 +77,18 @@ app.use('/api/signup', signupRoutes);
 // PROTECTED ROUTES (Authentication required)
 // ============================================
 
-// Apply authentication middleware to all routes below
-app.use('/api/*', authenticate);
-
 // Routes that need organization context (multi-tenant data)
-app.use('/api/organizations', organizationContext, organizationsRoutes);
-app.use('/api/invoices', organizationContext, invoicesRoutes);
+// Note: Each route file has authenticate middleware applied internally
+app.use('/api/organizations', organizationsRoutes);
+app.use('/api/invoices', invoicesRoutes);
+app.use('/api/customers', customersRoutes);
+app.use('/api/banks', banksRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/dsas', dsasRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/payouts', payoutsRoutes);
 // app.use('/api/profile', organizationContext, profileRoutes);
-// app.use('/api/payouts', organizationContext, payoutsRoutes);
 // app.use('/api/dsa-invoices', organizationContext, dsaInvoiceRoutes);
 // app.use('/api/chatbot', organizationContext, chatbotRoutes);
 

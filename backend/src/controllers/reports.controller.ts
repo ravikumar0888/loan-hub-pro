@@ -10,7 +10,8 @@ export class ReportsController {
       const customers = await reportsService.generateReport(
         req.query,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -27,7 +28,8 @@ export class ReportsController {
       const summary = await reportsService.getReportSummary(
         req.query,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -44,7 +46,8 @@ export class ReportsController {
       const customers = await reportsService.generateReport(
         req.query,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       const csv = reportsService.exportToCSV(customers);

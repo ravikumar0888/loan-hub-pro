@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { mockUsers, mockBanks } from '@/data/mockData';
 import { User, UserRole, LoanType, BankDetail } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,13 +29,15 @@ import {
 import { Plus, Loader2, Users as UsersIcon, Search, Edit, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usersApi, banksApi } from '@/lib/api';
 
 export default function Users() {
   const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -50,20 +51,109 @@ export default function Users() {
   const [bankDetails, setBankDetails] = useState<BankDetail[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Fetch users from backend
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const response = await usersApi.getUsers();
+      return response.data;
+    },
+  });
+
+  // Fetch banks for connector bank details
+  const { data: banksData } = useQuery({
+    queryKey: ['banks', 'all'],
+    queryFn: async () => {
+      const response = await banksApi.getAllBanks();
+      return response.data;
+    },
+  });
+
+  const users = usersData || [];
+  const banks = banksData || [];
+
   const filteredUsers = users.filter(
-    (user) =>
-      user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.mobile.includes(searchQuery)
+    (user: User) =>
+      user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.mobile?.includes(searchQuery)
   );
 
   const roleStyles: Record<UserRole, string> = {
     master_admin: 'bg-accent/10 text-accent border-accent/20',
+    superadmin: 'bg-accent/10 text-accent border-accent/20',
     admin: 'bg-primary/10 text-primary border-primary/20',
     backoffice: 'bg-info/10 text-info border-info/20',
     connector: 'bg-success/10 text-success border-success/20',
   };
+
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await usersApi.createUser(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      resetForm();
+      setIsDialogOpen(false);
+      toast({
+        title: 'User Created',
+        description: 'User has been added successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create user',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update user mutation
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await usersApi.updateUser(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      resetForm();
+      setIsDialogOpen(false);
+      toast({
+        title: 'User Updated',
+        description: 'User has been updated successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update user',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await usersApi.deleteUser(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: 'User Deleted',
+        description: 'User has been removed successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -72,7 +162,12 @@ export default function Users() {
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.mobile.match(/^\d{10}$/)) newErrors.mobile = 'Valid 10-digit mobile required';
     if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) newErrors.email = 'Valid email required';
-    if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+
+    // Password required only for new users
+    if (!editingUser && formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
     if (!formData.role) newErrors.role = 'User type is required';
 
     setErrors(newErrors);
@@ -101,7 +196,7 @@ export default function Users() {
       bankDetails.map((b) => {
         if (b.id === id) {
           if (field === 'bankId') {
-            const bank = mockBanks.find((bank) => bank.id === value);
+            const bank = banks.find((bank: any) => bank.id === value);
             return { ...b, bankId: value as string, bankName: bank?.name || '' };
           }
           return { ...b, [field]: value };
@@ -111,26 +206,7 @@ export default function Users() {
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) return;
-
-    setIsLoading(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const newUser: User = {
-      id: `${Date.now()}`,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      mobile: formData.mobile,
-      email: formData.email,
-      role: formData.role as UserRole,
-      createdAt: new Date(),
-    };
-
-    setUsers([...users, newUser]);
+  const resetForm = () => {
     setFormData({
       firstName: '',
       lastName: '',
@@ -141,14 +217,50 @@ export default function Users() {
     });
     setBankDetails([]);
     setErrors({});
-    setIsDialogOpen(false);
-    setIsLoading(false);
-
-    toast({
-      title: 'User Created',
-      description: `${newUser.firstName} ${newUser.lastName} has been added successfully.`,
-    });
+    setEditingUser(null);
   };
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      mobile: user.mobile,
+      email: user.email,
+      password: '',
+      role: user.role,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      deleteUserMutation.mutate(id);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    const userData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      mobile: formData.mobile,
+      email: formData.email,
+      role: formData.role,
+      ...(formData.password && { password: formData.password }),
+    };
+
+    if (editingUser) {
+      updateUserMutation.mutate({ id: editingUser.id, data: userData });
+    } else {
+      createUserMutation.mutate(userData);
+    }
+  };
+
+  const isLoading = createUserMutation.isPending || updateUserMutation.isPending;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -157,7 +269,10 @@ export default function Users() {
           <h2 className="text-2xl font-bold text-foreground">User Management</h2>
           <p className="text-muted-foreground">Manage system users and their access</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -166,7 +281,7 @@ export default function Users() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card">
             <DialogHeader>
-              <DialogTitle>Add New User</DialogTitle>
+              <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6 mt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -217,12 +332,13 @@ export default function Users() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
+                  <Label htmlFor="password">Password {!editingUser && '*'}</Label>
                   <Input
                     id="password"
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder={editingUser ? 'Leave blank to keep current' : ''}
                     error={!!errors.password}
                   />
                   {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
@@ -269,7 +385,7 @@ export default function Users() {
                             <SelectValue placeholder="Select bank" />
                           </SelectTrigger>
                           <SelectContent className="bg-popover border border-border">
-                            {mockBanks.map((bank) => (
+                            {banks.map((bank: any) => (
                               <SelectItem key={bank.id} value={bank.id}>
                                 {bank.name}
                               </SelectItem>
@@ -325,7 +441,10 @@ export default function Users() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    resetForm();
+                  }}
                 >
                   Cancel
                 </Button>
@@ -333,10 +452,10 @@ export default function Users() {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
+                      {editingUser ? 'Updating...' : 'Creating...'}
                     </>
                   ) : (
-                    'Create User'
+                    editingUser ? 'Update User' : 'Create User'
                   )}
                 </Button>
               </div>
@@ -358,57 +477,77 @@ export default function Users() {
           </div>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead>Name</TableHead>
-              <TableHead>Mobile</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>User Type</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <UsersIcon className="w-8 h-8" />
-                    <p>No users found</p>
-                  </div>
-                </TableCell>
+        {usersLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Name</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>User Type</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              filteredUsers.map((user) => (
-                <TableRow key={user.id} className="table-row-hover">
-                  <TableCell className="font-medium">
-                    {user.firstName} {user.lastName}
-                  </TableCell>
-                  <TableCell>{user.mobile}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn('capitalize font-medium', roleStyles[user.role])}
-                    >
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <UsersIcon className="w-8 h-8" />
+                      <p>No users found</p>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredUsers.map((user: User) => (
+                  <TableRow key={user.id} className="table-row-hover">
+                    <TableCell className="font-medium">
+                      {user.firstName} {user.lastName}
+                    </TableCell>
+                    <TableCell>{user.mobile}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn('capitalize font-medium', roleStyles[user.role])}
+                      >
+                        {user.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(user)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(user.id)}
+                          disabled={deleteUserMutation.isPending}
+                        >
+                          {deleteUserMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );

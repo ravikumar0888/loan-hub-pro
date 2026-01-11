@@ -6,6 +6,8 @@ export type LoanType = 'PL' | 'HL' | 'BL';
 
 export type HomeType = 'own' | 'rental' | 'self-occupied';
 
+export type CaseType = 'fresh' | 'bt' | 'bt_topup';
+
 // Pricing Tiers
 export type PricingTier = 'starter' | 'professional' | 'enterprise';
 
@@ -37,6 +39,13 @@ export interface Organization {
   trialEndsAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  users?: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    mobile: string;
+  }>;
 }
 
 // Billing
@@ -98,39 +107,80 @@ export interface Reference {
 
 export interface Customer {
   id: string;
-  date: Date;
   applicationId: string;
+  applicationDate: Date;
+  date?: Date; // Backward compatibility
   // Personal Details
   name: string;
-  motherName: string;
-  spouseName: string;
+  motherName?: string;
+  spouseName?: string;
   mobile: string;
-  email: string;
+  personalEmail?: string;
+  panNo?: string;
+  aadharNo?: string;
+  dateOfBirth?: Date;
   // Professional Details
-  currentCompany: string;
-  currentCompanyExperience: string;
-  officialEmail: string;
-  totalWorkExperience: string;
-  currentAddress: string;
-  postalAddress: string;
-  homeType: HomeType;
+  currentCompany?: string;
+  currentCompanyExperience?: string;
+  officialEmail?: string;
+  totalWorkExperience?: string;
+  currentAddress?: string;
+  postalAddress?: string;
+  homeType?: HomeType;
   // References
-  reference1: Reference;
-  reference2: Reference;
+  reference1?: Reference;
+  reference2?: Reference;
+  // Nominee Details
+  nomineeName?: string;
+  nomineeRelation?: string;
+  nomineeDateOfBirth?: Date;
   // Loan Details
   loanType: LoanType;
   loanAmount: number;
+  caseType?: CaseType;
+  location?: string;
+  subventionAmount?: number;
+  // Relationships
   connectorId: string;
-  connectorName: string;
-  dsaId: string;
-  dsaName: string;
+  connectorName?: string;
+  connector?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    mobile?: string;
+  };
+  dsaId?: string;
+  dsaName?: string;
+  dsa?: {
+    id: string;
+    name: string;
+  };
   bankId: string;
-  bankName: string;
+  bankName?: string;
+  bank?: {
+    id: string;
+    name: string;
+  };
   leadOwner: string;
-  salesManager: string;
+  salesManager?: string;
+  // Status & Tracking
   status: LoanStatus;
-  remarks: Array<{ text: string; addedBy: string; addedAt: Date }>;
+  remarks?: Array<{
+    text?: string;
+    remark?: string;
+    addedBy?: string;
+    addedAt?: Date;
+    createdAt?: Date;
+    user?: {
+      firstName: string;
+      lastName: string;
+    };
+  }>;
+  pdfUrl?: string;
+  organizationId?: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface DSA {

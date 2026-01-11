@@ -3,12 +3,17 @@ import { PAGINATION_DEFAULTS } from '../config/constants';
 import { PaginationQuery } from '../types';
 
 export class DsasService {
-  async getDsas(query: PaginationQuery & { search?: string }) {
+  async getDsas(query: PaginationQuery & { search?: string }, userRole?: string, organizationId?: string | null) {
     const page = query.page || PAGINATION_DEFAULTS.page;
     const limit = Math.min(query.limit || PAGINATION_DEFAULTS.limit, PAGINATION_DEFAULTS.maxLimit);
     const skip = (page - 1) * limit;
 
     const where: any = {};
+
+    // Multi-tenant filtering
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     if (query.search) {
       where.name = {
@@ -34,8 +39,17 @@ export class DsasService {
       prisma.dsa.count({ where }),
     ]);
 
+    // Convert Decimal fields to numbers
+    const transformedDsas = dsas.map((dsa) => ({
+      ...dsa,
+      bankDetails: dsa.bankDetails.map((bd) => ({
+        ...bd,
+        payoutRatio: Number(bd.payoutRatio),
+      })),
+    }));
+
     return {
-      data: dsas,
+      data: transformedDsas,
       pagination: {
         page,
         limit,
@@ -45,9 +59,16 @@ export class DsasService {
     };
   }
 
-  async getDsaById(id: string) {
-    const dsa = await prisma.dsa.findUnique({
-      where: { id },
+  async getDsaById(id: string, userRole?: string, organizationId?: string | null) {
+    const where: any = { id };
+
+    // Multi-tenant filtering - only allow access to DSAs in user's organization
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
+
+    const dsa = await prisma.dsa.findFirst({
+      where,
       include: {
         bankDetails: {
           include: {
@@ -61,10 +82,19 @@ export class DsasService {
       throw new Error('DSA not found');
     }
 
-    return dsa;
+    // Convert Decimal fields to numbers
+    const transformedDsa = {
+      ...dsa,
+      bankDetails: dsa.bankDetails.map((bd) => ({
+        ...bd,
+        payoutRatio: Number(bd.payoutRatio),
+      })),
+    };
+
+    return transformedDsa;
   }
 
-  async createDsa(data: { name: string; bankDetails: any[] }) {
+  async createDsa(data: { name: string; bankDetails: any[]; organizationId?: string | null }) {
     // Check if DSA already exists
     const existing = await prisma.dsa.findUnique({
       where: { name: data.name },
@@ -77,6 +107,7 @@ export class DsasService {
     const dsa = await prisma.dsa.create({
       data: {
         name: data.name,
+        organizationId: data.organizationId,
         bankDetails: {
           create: data.bankDetails.map((bd) => ({
             bankId: bd.bankId,
@@ -94,7 +125,16 @@ export class DsasService {
       },
     });
 
-    return dsa;
+    // Convert Decimal fields to numbers
+    const transformedDsa = {
+      ...dsa,
+      bankDetails: dsa.bankDetails.map((bd) => ({
+        ...bd,
+        payoutRatio: Number(bd.payoutRatio),
+      })),
+    };
+
+    return transformedDsa;
   }
 
   async updateDsa(id: string, data: { name?: string; isActive?: boolean; bankDetails?: any[] }) {
@@ -145,7 +185,16 @@ export class DsasService {
       },
     });
 
-    return updatedDsa;
+    // Convert Decimal fields to numbers
+    const transformedDsa = {
+      ...updatedDsa,
+      bankDetails: updatedDsa.bankDetails.map((bd) => ({
+        ...bd,
+        payoutRatio: Number(bd.payoutRatio),
+      })),
+    };
+
+    return transformedDsa;
   }
 
   async deleteDsa(id: string) {
@@ -160,9 +209,16 @@ export class DsasService {
     return { message: 'DSA deleted successfully' };
   }
 
-  async getAllDsas() {
+  async getAllDsas(userRole?: string, organizationId?: string | null) {
+    const where: any = { isActive: true };
+
+    // Multi-tenant filtering
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
+
     const dsas = await prisma.dsa.findMany({
-      where: { isActive: true },
+      where,
       select: {
         id: true,
         name: true,

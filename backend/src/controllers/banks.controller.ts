@@ -7,7 +7,7 @@ const banksService = new BanksService();
 export class BanksController {
   async getBanks(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const result = await banksService.getBanks(req.query);
+      const result = await banksService.getBanks(req.query, req.user?.role, req.organizationId);
 
       res.json({
         success: true,
@@ -21,7 +21,7 @@ export class BanksController {
   async getBankById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const bank = await banksService.getBankById(id);
+      const bank = await banksService.getBankById(id, req.user?.role, req.organizationId);
 
       res.json({
         success: true,
@@ -34,7 +34,10 @@ export class BanksController {
 
   async createBank(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const bank = await banksService.createBank(req.body);
+      const bank = await banksService.createBank({
+        ...req.body,
+        organizationId: req.organizationId,
+      });
 
       res.status(201).json({
         success: true,
@@ -49,7 +52,7 @@ export class BanksController {
   async updateBank(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const bank = await banksService.updateBank(id, req.body);
+      const bank = await banksService.updateBank(id, req.body, req.user?.role, req.organizationId);
 
       res.json({
         success: true,
@@ -64,7 +67,7 @@ export class BanksController {
   async deleteBank(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const result = await banksService.deleteBank(id);
+      const result = await banksService.deleteBank(id, req.user?.role, req.organizationId);
 
       res.json({
         success: true,
@@ -77,7 +80,7 @@ export class BanksController {
 
   async getAllBanks(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const banks = await banksService.getAllBanks();
+      const banks = await banksService.getAllBanks(req.user?.role, req.organizationId);
 
       res.json({
         success: true,

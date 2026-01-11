@@ -10,7 +10,8 @@ export class CustomersController {
       const result = await customersService.getCustomers(
         req.query,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -28,7 +29,8 @@ export class CustomersController {
       const customer = await customersService.getCustomerById(
         id,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -46,7 +48,7 @@ export class CustomersController {
         ...req.body,
         createdBy: req.user?.userId,
       };
-      const customer = await customersService.createCustomer(data);
+      const customer = await customersService.createCustomer(data, req.organizationId);
 
       res.status(201).json({
         success: true,
@@ -65,7 +67,8 @@ export class CustomersController {
         id,
         req.body,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({

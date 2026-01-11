@@ -4,12 +4,17 @@ import { PAGINATION_DEFAULTS } from '../config/constants';
 import { PaginationQuery, UserRole } from '../types';
 
 export class UsersService {
-  async getUsers(query: PaginationQuery & { role?: UserRole; search?: string }) {
+  async getUsers(query: PaginationQuery & { role?: UserRole; search?: string }, userRole?: string, organizationId?: string | null) {
     const page = query.page || PAGINATION_DEFAULTS.page;
     const limit = Math.min(query.limit || PAGINATION_DEFAULTS.limit, PAGINATION_DEFAULTS.maxLimit);
     const skip = (page - 1) * limit;
 
     const where: any = {};
+
+    // Multi-tenant filtering: filter by organizationId (except for master_admin)
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     if (query.role) {
       where.role = query.role;
@@ -36,7 +41,7 @@ export class UsersService {
           role: true,
           isActive: true,
           createdAt: true,
-          bankDetails: {
+          userBankDetails: {
             include: {
               bank: true,
             },
@@ -60,7 +65,7 @@ export class UsersService {
     };
   }
 
-  async getUserById(id: string) {
+  async getUserById(id: string, userRole?: string, organizationId?: string | null) {
     const user = await prisma.user.findUnique({
       where: { id },
       select: {
@@ -73,7 +78,8 @@ export class UsersService {
         isActive: true,
         createdAt: true,
         updatedAt: true,
-        bankDetails: {
+        organizationId: true,
+        userBankDetails: {
           include: {
             bank: true,
           },
@@ -85,10 +91,15 @@ export class UsersService {
       throw new Error('User not found');
     }
 
+    // Multi-tenant check: ensure user belongs to the same organization
+    if (userRole !== 'master_admin' && organizationId && user.organizationId !== organizationId) {
+      throw new Error('Forbidden - User not found in your organization');
+    }
+
     return user;
   }
 
-  async createUser(data: any) {
+  async createUser(data: any, organizationId?: string | null) {
     // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email },
@@ -117,6 +128,7 @@ export class UsersService {
         mobile: data.mobile,
         passwordHash,
         role: data.role,
+        organizationId: organizationId, // Assign organization to user
       },
       select: {
         id: true,
@@ -145,11 +157,16 @@ export class UsersService {
     return user;
   }
 
-  async updateUser(id: string, data: any) {
+  async updateUser(id: string, data: any, userRole?: string, organizationId?: string | null) {
     const user = await prisma.user.findUnique({ where: { id } });
 
     if (!user) {
       throw new Error('User not found');
+    }
+
+    // Multi-tenant check: ensure user belongs to the same organization
+    if (userRole !== 'master_admin' && organizationId && user.organizationId !== organizationId) {
+      throw new Error('Forbidden - User not found in your organization');
     }
 
     // Check email uniqueness if updating
@@ -214,11 +231,16 @@ export class UsersService {
     return updatedUser;
   }
 
-  async deleteUser(id: string) {
+  async deleteUser(id: string, userRole?: string, organizationId?: string | null) {
     const user = await prisma.user.findUnique({ where: { id } });
 
     if (!user) {
       throw new Error('User not found');
+    }
+
+    // Multi-tenant check: ensure user belongs to the same organization
+    if (userRole !== 'master_admin' && organizationId && user.organizationId !== organizationId) {
+      throw new Error('Forbidden - User not found in your organization');
     }
 
     await prisma.user.delete({ where: { id } });
@@ -226,9 +248,16 @@ export class UsersService {
     return { message: 'User deleted successfully' };
   }
 
-  async getConnectors() {
+  async getConnectors(userRole?: string, organizationId?: string | null) {
+    const where: any = { role: 'connector', isActive: true };
+
+    // Multi-tenant filtering: filter by organizationId (except for master_admin)
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
+
     const connectors = await prisma.user.findMany({
-      where: { role: 'connector', isActive: true },
+      where,
       select: {
         id: true,
         firstName: true,

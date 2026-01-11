@@ -20,6 +20,7 @@ export class SignupController {
         superAdminEmail,
         superAdminPassword,
         superAdminName,
+        superAdminMobile,
         ...rest
       } = req.body;
 
@@ -36,6 +37,7 @@ export class SignupController {
         adminPassword: superAdminPassword,
         adminFirstName,
         adminLastName,
+        adminMobile: superAdminMobile,
         ...rest, // Include any other fields like address, website, pricingTier, seats
       };
 

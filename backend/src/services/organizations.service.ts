@@ -5,20 +5,20 @@ import { hashPassword } from '../utils/password';
 
 export class OrganizationsService {
   /**
-   * Get all organizations (master_admin only)
+   * Get all organizations (master_admin sees all, superadmin sees only their own)
    * Supports filtering by status and search
    */
-  async getOrganizations(query: OrganizationQueryParams, userRole?: string) {
-    // Only master_admin can view all organizations
-    if (userRole !== 'master_admin') {
-      throw new Error('Unauthorized: Only master admins can view all organizations');
-    }
-
+  async getOrganizations(query: OrganizationQueryParams, userRole?: string, organizationId?: string | null) {
     const page = query.page || PAGINATION_DEFAULTS.page;
     const limit = Math.min(query.limit || PAGINATION_DEFAULTS.limit, PAGINATION_DEFAULTS.maxLimit);
     const skip = (page - 1) * limit;
 
     const where: any = {};
+
+    // Multi-tenant filtering: superadmin can only see their own organization
+    if (userRole !== 'master_admin' && organizationId) {
+      where.id = organizationId;
+    }
 
     if (query.status) {
       where.status = query.status;
@@ -36,6 +36,17 @@ export class OrganizationsService {
       prisma.organization.findMany({
         where,
         include: {
+          users: {
+            where: { role: 'superadmin' },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              mobile: true,
+            },
+            take: 1,
+          },
           _count: {
             select: {
               users: true,
@@ -78,6 +89,17 @@ export class OrganizationsService {
     const organization = await prisma.organization.findUnique({
       where: { id },
       include: {
+        users: {
+          where: { role: 'superadmin' },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            mobile: true,
+          },
+          take: 1,
+        },
         _count: {
           select: {
             users: true,
@@ -235,9 +257,64 @@ export class OrganizationsService {
       }
     }
 
+    // Extract super admin updates
+    const {
+      adminFirstName,
+      adminLastName,
+      adminEmail,
+      adminMobile,
+      adminPassword,
+      ...orgUpdates
+    } = updates;
+
+    // Update organization and super admin in transaction if admin fields are provided
+    const hasAdminUpdates = adminFirstName || adminLastName || adminEmail || adminMobile || adminPassword;
+
+    if (hasAdminUpdates) {
+      return await prisma.$transaction(async (tx) => {
+        // Find the super admin user
+        const superAdmin = await tx.user.findFirst({
+          where: {
+            organizationId: id,
+            role: 'superadmin',
+          },
+        });
+
+        if (!superAdmin) {
+          throw new Error('Super admin not found for organization');
+        }
+
+        // Update super admin user
+        const userUpdateData: any = {};
+        if (adminFirstName) userUpdateData.firstName = adminFirstName;
+        if (adminLastName) userUpdateData.lastName = adminLastName;
+        if (adminEmail) userUpdateData.email = adminEmail;
+        if (adminMobile) userUpdateData.mobile = adminMobile;
+        if (adminPassword) {
+          userUpdateData.passwordHash = await hashPassword(adminPassword);
+        }
+
+        if (Object.keys(userUpdateData).length > 0) {
+          await tx.user.update({
+            where: { id: superAdmin.id },
+            data: userUpdateData,
+          });
+        }
+
+        // Update organization
+        const organization = await tx.organization.update({
+          where: { id },
+          data: orgUpdates as any,
+        });
+
+        return organization;
+      });
+    }
+
+    // If no admin updates, just update organization
     const organization = await prisma.organization.update({
       where: { id },
-      data: updates as any,
+      data: orgUpdates as any,
     });
 
     return organization;

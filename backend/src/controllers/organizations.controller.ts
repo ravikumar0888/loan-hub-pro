@@ -9,7 +9,8 @@ export class OrganizationsController {
     try {
       const result = await organizationsService.getOrganizations(
         req.query,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({

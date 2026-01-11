@@ -7,7 +7,11 @@ const usersService = new UsersService();
 export class UsersController {
   async getUsers(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const result = await usersService.getUsers(req.query);
+      const result = await usersService.getUsers(
+        req.query,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -21,7 +25,11 @@ export class UsersController {
   async getUserById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const user = await usersService.getUserById(id);
+      const user = await usersService.getUserById(
+        id,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -34,7 +42,7 @@ export class UsersController {
 
   async createUser(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const user = await usersService.createUser(req.body);
+      const user = await usersService.createUser(req.body, req.organizationId);
 
       res.status(201).json({
         success: true,
@@ -49,7 +57,12 @@ export class UsersController {
   async updateUser(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const user = await usersService.updateUser(id, req.body);
+      const user = await usersService.updateUser(
+        id,
+        req.body,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -64,7 +77,11 @@ export class UsersController {
   async deleteUser(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const result = await usersService.deleteUser(id);
+      const result = await usersService.deleteUser(
+        id,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -77,7 +94,10 @@ export class UsersController {
 
   async getConnectors(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const connectors = await usersService.getConnectors();
+      const connectors = await usersService.getConnectors(
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,

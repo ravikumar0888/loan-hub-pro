@@ -13,11 +13,18 @@ const organizationsController = new OrganizationsController();
 router.use(authenticate);
 router.use(organizationContext);
 
-// List organizations - master_admin only
+// List organizations - master_admin sees all, superadmin sees only their own
 router.get(
   '/',
-  authorize(['master_admin']),
+  authorize(['master_admin', 'superadmin']),
   organizationsController.getOrganizations.bind(organizationsController)
+);
+
+// Create organization - master_admin only
+router.post(
+  '/',
+  authorize(['master_admin']),
+  organizationsController.createOrganization.bind(organizationsController)
 );
 
 // Get organization by ID - superadmin/admin can see their own, master_admin can see all

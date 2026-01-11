@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { PayoutsController } from '../controllers/payouts.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { organizationContext } from '../middleware/organizationContext';
 
 const router = Router();
 const payoutsController = new PayoutsController();
 
-// All routes require authentication
+// All routes require authentication and organization context
 router.use(authenticate);
+router.use(organizationContext);
 
 // Get all connector balances (SuperAdmin, Admin)
 router.get(

@@ -105,6 +105,9 @@ export const usersApi = {
 
   getConnectors: () =>
     apiRequest<{ success: boolean; data: any[] }>('/users/connectors'),
+
+  getAdmins: () =>
+    apiRequest<{ success: boolean; data: any[] }>('/users?role=admin'),
 };
 
 // Banks API
@@ -253,6 +256,51 @@ export const reportsApi = {
 
     return response.blob();
   },
+};
+
+// Payouts API
+export const payoutsApi = {
+  getAllConnectorBalances: (params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/payouts/balances${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+
+  getConnectorBalance: (connectorId: string, params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/payouts/balance/${connectorId}${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+
+  getMonthlyPayout: (params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/payouts/monthly${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+
+  getLedgerEntries: (params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any[]; pagination: any }>(
+      `/payouts/ledger${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+
+  getMonthlyPayoutsByConnector: (connectorId: string, params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/payouts/monthly-by-connector/${connectorId}${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
+
+  addLedgerEntry: (data: any) =>
+    apiRequest<{ success: boolean; data: any }>('/payouts/ledger', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteLedgerEntry: (id: string) =>
+    apiRequest<{ success: boolean; message: string }>(`/payouts/ledger/${id}`, {
+      method: 'DELETE',
+    }),
+
+  generatePayoutPDF: (data: any) =>
+    apiRequest<{ success: boolean; data: any }>('/payouts/generate-pdf', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // Organizations API

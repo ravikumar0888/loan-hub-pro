@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../utils/jwt';
+import { AuthRequest } from '../types';
 
 const prisma = new PrismaClient();
 
@@ -101,35 +102,11 @@ export class AuthController {
     }
   }
 
-  async forgotPassword(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const { email } = req.body;
-      const result = await authService.forgotPassword(email);
-
-      res.json({
-        success: true,
-        message: result.message,
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
-  async resetPassword(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const { token, password } = req.body;
-      const result = await authService.resetPassword(token, password);
-
-      res.json({
-        success: true,
-        message: result.message,
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
-  async getCurrentUser(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Get current authenticated user
+   * Returns user data with organization info
+   */
+  async me(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -138,13 +115,45 @@ export class AuthController {
         });
       }
 
-      const user = await authService.getCurrentUser(req.user.userId);
+      // Fetch full user data with organization
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              pricingTier: true,
+              logo: true,
+            },
+          },
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
 
       res.json({
         success: true,
-        data: user,
+        data: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          mobile: user.mobile,
+          role: user.role,
+          profilePhoto: user.profilePhoto,
+          organizationId: user.organizationId,
+          organization: user.organization,
+        },
       });
     } catch (error: any) {
+      console.error('Get current user error:', error);
       next(error);
     }
   }

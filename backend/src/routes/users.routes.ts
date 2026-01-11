@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { UsersController } from '../controllers/users.controller';
 import { authenticate } from '../middleware/auth';
+import { organizationContext } from '../middleware/organizationContext';
 import { authorize } from '../middleware/authorize';
 import { validate } from '../middleware/validator';
 import { createUserSchema, updateUserSchema } from '../utils/validators';
@@ -8,17 +9,18 @@ import { createUserSchema, updateUserSchema } from '../utils/validators';
 const router = Router();
 const usersController = new UsersController();
 
-// All routes require authentication
+// All routes require authentication and organization context
 router.use(authenticate);
+router.use(organizationContext);
 
 // Get connectors (accessible by all authenticated users)
 router.get('/connectors', usersController.getConnectors.bind(usersController));
 
-// Admin only routes
-router.get('/', authorize(['admin']), usersController.getUsers.bind(usersController));
-router.get('/:id', authorize(['admin']), usersController.getUserById.bind(usersController));
-router.post('/', authorize(['admin']), validate(createUserSchema), usersController.createUser.bind(usersController));
-router.put('/:id', authorize(['admin']), validate(updateUserSchema), usersController.updateUser.bind(usersController));
-router.delete('/:id', authorize(['admin']), usersController.deleteUser.bind(usersController));
+// Superadmin and Admin only routes
+router.get('/', authorize(['superadmin', 'admin']), usersController.getUsers.bind(usersController));
+router.get('/:id', authorize(['superadmin', 'admin']), usersController.getUserById.bind(usersController));
+router.post('/', authorize(['superadmin', 'admin']), validate(createUserSchema), usersController.createUser.bind(usersController));
+router.put('/:id', authorize(['superadmin', 'admin']), validate(updateUserSchema), usersController.updateUser.bind(usersController));
+router.delete('/:id', authorize(['superadmin', 'admin']), usersController.deleteUser.bind(usersController));
 
 export default router;

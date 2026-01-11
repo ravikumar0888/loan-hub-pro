@@ -20,6 +20,7 @@ import Banks from "./pages/Banks";
 import Users from "./pages/Users";
 import DSAPage from "./pages/DSA";
 import Reports from "./pages/Reports";
+import Payouts from "./pages/Payouts";
 import MasterAdminDashboard from "./pages/MasterAdmin";
 
 const queryClient = new QueryClient();
@@ -114,6 +115,17 @@ function AppRoutes() {
         }
       >
         <Route index element={<DSAPage />} />
+      </Route>
+
+      <Route
+        path="/payouts"
+        element={
+          <ProtectedRoute allowedRoles={['superadmin', 'admin']}>
+            <DashboardLayout title="Payouts" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Payouts />} />
       </Route>
 
       <Route

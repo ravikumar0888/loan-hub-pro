@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Building2,
   LogOut,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -30,37 +31,43 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       label: 'Dashboard',
       icon: LayoutDashboard,
       path: '/dashboard',
-      roles: ['admin', 'backoffice', 'connector'],
+      roles: ['superadmin', 'admin', 'backoffice', 'connector'],
     },
     {
       label: 'Customers',
       icon: Users,
       path: '/customers',
-      roles: ['admin', 'backoffice', 'connector'],
+      roles: ['superadmin', 'admin', 'backoffice', 'connector'],
     },
     {
       label: 'Banks & NBFC',
       icon: Building,
       path: '/banks',
-      roles: ['admin'],
+      roles: ['superadmin', 'admin'],
     },
     {
       label: 'Users',
       icon: UserCog,
       path: '/users',
-      roles: ['admin'],
+      roles: ['superadmin', 'admin'],
     },
     {
       label: 'Corporate DSA',
       icon: Briefcase,
       path: '/dsa',
-      roles: ['admin'],
+      roles: ['superadmin', 'admin'],
+    },
+    {
+      label: 'Payouts',
+      icon: Wallet,
+      path: '/payouts',
+      roles: ['superadmin', 'admin'],
     },
     {
       label: 'Reports',
       icon: FileText,
       path: '/reports',
-      roles: ['admin'],
+      roles: ['superadmin', 'admin'],
     },
   ];
 

@@ -7,7 +7,7 @@ const dsasService = new DsasService();
 export class DsasController {
   async getDsas(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const result = await dsasService.getDsas(req.query);
+      const result = await dsasService.getDsas(req.query, req.user?.role, req.organizationId);
 
       res.json({
         success: true,
@@ -21,7 +21,7 @@ export class DsasController {
   async getDsaById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const dsa = await dsasService.getDsaById(id);
+      const dsa = await dsasService.getDsaById(id, req.user?.role, req.organizationId);
 
       res.json({
         success: true,
@@ -34,7 +34,10 @@ export class DsasController {
 
   async createDsa(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const dsa = await dsasService.createDsa(req.body);
+      const dsa = await dsasService.createDsa({
+        ...req.body,
+        organizationId: req.organizationId,
+      });
 
       res.status(201).json({
         success: true,
@@ -77,7 +80,7 @@ export class DsasController {
 
   async getAllDsas(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const dsas = await dsasService.getAllDsas();
+      const dsas = await dsasService.getAllDsas(req.user?.role, req.organizationId);
 
       res.json({
         success: true,
