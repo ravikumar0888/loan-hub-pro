@@ -107,7 +107,7 @@ export const usersApi = {
     apiRequest<{ success: boolean; data: any[] }>('/users/connectors'),
 
   getAdmins: () =>
-    apiRequest<{ success: boolean; data: any[] }>('/users?role=admin'),
+    apiRequest<{ success: boolean; data: any[] }>('/users/admins'),
 };
 
 // Banks API

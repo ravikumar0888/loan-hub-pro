@@ -15,7 +15,8 @@ export class PayoutsController {
       const entry = await payoutsService.addLedgerEntry(
         { connectorId, customerId, entryType, amount, description, month, year, createdBy: req.user?.userId },
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -47,7 +48,8 @@ export class PayoutsController {
         parseInt(month as string),
         parseInt(year as string),
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -69,7 +71,8 @@ export class PayoutsController {
       const balance = await payoutsService.getConnectorBalance(
         connectorId,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -88,7 +91,8 @@ export class PayoutsController {
     try {
       const balances = await payoutsService.getAllConnectorBalances(
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -116,7 +120,8 @@ export class PayoutsController {
       const entries = await payoutsService.getLedgerEntries(
         filters,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -138,7 +143,8 @@ export class PayoutsController {
       const monthlyData = await payoutsService.getMonthlyPayoutsByConnector(
         connectorId,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -160,7 +166,8 @@ export class PayoutsController {
       const result = await payoutsService.deleteLedgerEntry(
         id,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -191,7 +198,8 @@ export class PayoutsController {
         parseInt(month),
         parseInt(year),
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({

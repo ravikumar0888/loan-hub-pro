@@ -4,7 +4,7 @@ import { PAGINATION_DEFAULTS } from '../config/constants';
 import { PaginationQuery, UserRole } from '../types';
 
 export class UsersService {
-  async getUsers(query: PaginationQuery & { role?: UserRole; search?: string }, userRole?: string, organizationId?: string | null) {
+  async getUsers(query: PaginationQuery & { role?: UserRole; search?: string }, userId?: string, userRole?: string, organizationId?: string | null) {
     const page = query.page || PAGINATION_DEFAULTS.page;
     const limit = Math.min(query.limit || PAGINATION_DEFAULTS.limit, PAGINATION_DEFAULTS.maxLimit);
     const skip = (page - 1) * limit;
@@ -16,17 +16,43 @@ export class UsersService {
       where.organizationId = organizationId;
     }
 
+    // Role-based filtering for admin: show only users they created + their own entry
+    if (userRole === 'admin' && userId) {
+      where.OR = [
+        { createdBy: userId }, // Users created by this admin
+        { id: userId },        // Admin's own entry
+      ];
+    }
+
     if (query.role) {
       where.role = query.role;
     }
 
     if (query.search) {
-      where.OR = [
-        { firstName: { contains: query.search, mode: 'insensitive' } },
-        { lastName: { contains: query.search, mode: 'insensitive' } },
-        { email: { contains: query.search, mode: 'insensitive' } },
-        { mobile: { contains: query.search } },
-      ];
+      // If admin filtering is already applied, we need to combine search with existing OR
+      if (where.OR && userRole === 'admin') {
+        // Combine admin filter with search filter
+        const adminFilter = where.OR;
+        where.AND = [
+          { OR: adminFilter },
+          {
+            OR: [
+              { firstName: { contains: query.search, mode: 'insensitive' } },
+              { lastName: { contains: query.search, mode: 'insensitive' } },
+              { email: { contains: query.search, mode: 'insensitive' } },
+              { mobile: { contains: query.search } },
+            ],
+          },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = [
+          { firstName: { contains: query.search, mode: 'insensitive' } },
+          { lastName: { contains: query.search, mode: 'insensitive' } },
+          { email: { contains: query.search, mode: 'insensitive' } },
+          { mobile: { contains: query.search } },
+        ];
+      }
     }
 
     const [users, total] = await Promise.all([
@@ -99,7 +125,14 @@ export class UsersService {
     return user;
   }
 
-  async createUser(data: any, organizationId?: string | null) {
+  async createUser(data: any, userId?: string, userRole?: string, organizationId?: string | null) {
+    // Role-based validation: Admins can only create connector and backoffice users
+    if (userRole === 'admin') {
+      if (data.role !== 'connector' && data.role !== 'backoffice') {
+        throw new Error('Forbidden - Admins can only create Connector and BackOffice users');
+      }
+    }
+
     // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email },
@@ -129,6 +162,7 @@ export class UsersService {
         passwordHash,
         role: data.role,
         organizationId: organizationId, // Assign organization to user
+        createdBy: userId, // Track who created this user
       },
       select: {
         id: true,
@@ -152,6 +186,28 @@ export class UsersService {
           payoutRatio: bd.payoutRatio,
         })),
       });
+
+      // Fetch user with bank details to return complete data
+      const userWithBankDetails = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          mobile: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          userBankDetails: {
+            include: {
+              bank: true,
+            },
+          },
+        },
+      });
+
+      return userWithBankDetails;
     }
 
     return user;
@@ -167,6 +223,13 @@ export class UsersService {
     // Multi-tenant check: ensure user belongs to the same organization
     if (userRole !== 'master_admin' && organizationId && user.organizationId !== organizationId) {
       throw new Error('Forbidden - User not found in your organization');
+    }
+
+    // Role-based validation: Admins cannot update users to admin/superadmin/master_admin roles
+    if (userRole === 'admin' && data.role) {
+      if (data.role !== 'connector' && data.role !== 'backoffice') {
+        throw new Error('Forbidden - Admins can only set user roles to Connector or BackOffice');
+      }
     }
 
     // Check email uniqueness if updating
@@ -210,6 +273,11 @@ export class UsersService {
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        userBankDetails: {
+          include: {
+            bank: true,
+          },
+        },
       },
     });
 
@@ -226,6 +294,29 @@ export class UsersService {
           })),
         });
       }
+
+      // Fetch updated user with bank details
+      const userWithBankDetails = await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          mobile: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          userBankDetails: {
+            include: {
+              bank: true,
+            },
+          },
+        },
+      });
+
+      return userWithBankDetails;
     }
 
     return updatedUser;
@@ -248,12 +339,17 @@ export class UsersService {
     return { message: 'User deleted successfully' };
   }
 
-  async getConnectors(userRole?: string, organizationId?: string | null) {
+  async getConnectors(userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = { role: 'connector', isActive: true };
 
     // Multi-tenant filtering: filter by organizationId (except for master_admin)
     if (userRole !== 'master_admin' && organizationId) {
       where.organizationId = organizationId;
+    }
+
+    // Admin sees only their created connectors
+    if (userRole === 'admin') {
+      where.createdBy = userId;
     }
 
     const connectors = await prisma.user.findMany({
@@ -269,5 +365,28 @@ export class UsersService {
     });
 
     return connectors;
+  }
+
+  async getAdmins(userRole?: string, organizationId?: string | null) {
+    const where: any = { role: 'admin', isActive: true };
+
+    // Multi-tenant filtering: filter by organizationId (except for master_admin)
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
+
+    const admins = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        mobile: true,
+      },
+      orderBy: { firstName: 'asc' },
+    });
+
+    return admins;
   }
 }

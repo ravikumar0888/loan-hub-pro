@@ -75,18 +75,18 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
 
-  // Fetch organizations from backend API
+  // Fetch organizations from backend API (only for master_admin and superadmin)
   const { data: organizationsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['organizations'],
     queryFn: async () => {
       const response = await organizationsApi.getAll();
       return response.data;
     },
-    enabled: !!user, // Only fetch if user is logged in
+    enabled: !!user && (role === 'master_admin' || role === 'superadmin'), // Only fetch for authorized roles
   });
 
   const organizations = organizationsData || [];

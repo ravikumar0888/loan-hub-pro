@@ -2,8 +2,13 @@ import prisma from '../config/database';
 import { format, subMonths, startOfMonth } from 'date-fns';
 
 export class DashboardService {
-  async getKPIs(startDate?: string, endDate?: string, userId?: string, userRole?: string) {
+  async getKPIs(startDate?: string, endDate?: string, userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = {};
+
+    // Multi-tenant filtering
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     // Role-based filtering
     if (userRole === 'connector') {
@@ -50,8 +55,13 @@ export class DashboardService {
     };
   }
 
-  async getTrendData(userId?: string, userRole?: string) {
+  async getTrendData(userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = {};
+
+    // Multi-tenant filtering
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     // Role-based filtering
     if (userRole === 'connector') {
@@ -98,8 +108,13 @@ export class DashboardService {
     return months;
   }
 
-  async getRecentCustomers(limit: number = 10, userId?: string, userRole?: string) {
+  async getRecentCustomers(limit: number = 10, userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = {};
+
+    // Multi-tenant filtering
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     // Role-based filtering
     if (userRole === 'connector') {

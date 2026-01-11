@@ -16,6 +16,9 @@ router.use(organizationContext);
 // Get connectors (accessible by all authenticated users)
 router.get('/connectors', usersController.getConnectors.bind(usersController));
 
+// Get admins (accessible by all authenticated users)
+router.get('/admins', usersController.getAdmins.bind(usersController));
+
 // Superadmin and Admin only routes
 router.get('/', authorize(['superadmin', 'admin']), usersController.getUsers.bind(usersController));
 router.get('/:id', authorize(['superadmin', 'admin']), usersController.getUserById.bind(usersController));

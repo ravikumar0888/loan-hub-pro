@@ -43,6 +43,28 @@ export class ReportsService {
             firstName: true,
             lastName: true,
             email: true,
+            bankDetails: {
+              include: {
+                bank: true,
+              },
+            },
+          },
+        },
+        bank: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        dsa: {
+          select: {
+            id: true,
+            name: true,
+            bankDetails: {
+              include: {
+                bank: true,
+              },
+            },
           },
         },
         remarks: {
@@ -53,7 +75,35 @@ export class ReportsService {
       orderBy: { applicationDate: 'desc' },
     });
 
-    return customers;
+    // Calculate payout for each customer
+    const customersWithPayout = customers.map((customer) => {
+      let calculatedPayout = 0;
+
+      if (customer.status === 'disbursed') {
+        // Find matching payout ratio from connector's bank details
+        const connectorBankDetail = customer.connector?.bankDetails?.find(
+          (bd) => bd.bankId === customer.bankId && bd.loanType === customer.loanType
+        );
+
+        if (connectorBankDetail) {
+          // Calculate payout: (loanAmount × payoutRatio%) - subventionAmount
+          calculatedPayout = (Number(customer.loanAmount) * Number(connectorBankDetail.payoutRatio)) / 100;
+
+          if (customer.subventionAmount) {
+            calculatedPayout -= Number(customer.subventionAmount);
+          }
+        }
+      }
+
+      return {
+        ...customer,
+        calculatedPayout,
+        loanAmount: Number(customer.loanAmount),
+        subventionAmount: customer.subventionAmount ? Number(customer.subventionAmount) : 0,
+      };
+    });
+
+    return customersWithPayout;
   }
 
   async getReportSummary(query: ReportQuery, userId?: string, userRole?: string, organizationId?: string | null) {

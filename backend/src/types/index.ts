@@ -20,6 +20,7 @@ export interface AuthUser {
 
 export interface AuthRequest extends Request {
   user?: AuthUser;
+  organizationId?: string | null;
 }
 
 // Loan Types

@@ -9,6 +9,7 @@ export class UsersController {
     try {
       const result = await usersService.getUsers(
         req.query,
+        req.user?.userId,
         req.user?.role,
         req.organizationId
       );
@@ -42,7 +43,12 @@ export class UsersController {
 
   async createUser(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const user = await usersService.createUser(req.body, req.organizationId);
+      const user = await usersService.createUser(
+        req.body,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.status(201).json({
         success: true,
@@ -95,6 +101,7 @@ export class UsersController {
   async getConnectors(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const connectors = await usersService.getConnectors(
+        req.user?.userId,
         req.user?.role,
         req.organizationId
       );
@@ -102,6 +109,22 @@ export class UsersController {
       res.json({
         success: true,
         data: connectors,
+      });
+    } catch (error: any) {
+      next(error);
+    }
+  }
+
+  async getAdmins(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const admins = await usersService.getAdmins(
+        req.user?.role,
+        req.organizationId
+      );
+
+      res.json({
+        success: true,
+        data: admins,
       });
     } catch (error: any) {
       next(error);

@@ -52,12 +52,15 @@ export default function DSAPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Fetch DSAs from backend
-  const { data: dsaData, isLoading: isLoadingDSAs } = useQuery({
+  const { data: dsaData, isLoading: isLoadingDSAs, error: queryError } = useQuery({
     queryKey: ['dsas'],
     queryFn: async () => {
       const response = await dsasApi.getDsas();
       return response.data;
     },
+    refetchOnMount: true,
+    staleTime: 0,
+    retry: 2,
   });
 
   // Fetch banks for dropdown
@@ -67,6 +70,9 @@ export default function DSAPage() {
       const response = await banksApi.getBanks();
       return response.data;
     },
+    refetchOnMount: true,
+    staleTime: 0,
+    retry: 2,
   });
 
   const dsaList = dsaData || [];

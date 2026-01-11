@@ -137,11 +137,16 @@ export class DsasService {
     return transformedDsa;
   }
 
-  async updateDsa(id: string, data: { name?: string; isActive?: boolean; bankDetails?: any[] }) {
+  async updateDsa(id: string, data: { name?: string; isActive?: boolean; bankDetails?: any[] }, userRole?: string, organizationId?: string | null) {
     const dsa = await prisma.dsa.findUnique({ where: { id } });
 
     if (!dsa) {
       throw new Error('DSA not found');
+    }
+
+    // Multi-tenant check: ensure DSA belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && dsa.organizationId !== organizationId) {
+      throw new Error('Forbidden - DSA not found in your organization');
     }
 
     // Check name uniqueness if updating
@@ -197,11 +202,16 @@ export class DsasService {
     return transformedDsa;
   }
 
-  async deleteDsa(id: string) {
+  async deleteDsa(id: string, userRole?: string, organizationId?: string | null) {
     const dsa = await prisma.dsa.findUnique({ where: { id } });
 
     if (!dsa) {
       throw new Error('DSA not found');
+    }
+
+    // Multi-tenant check: ensure DSA belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && dsa.organizationId !== organizationId) {
+      throw new Error('Forbidden - DSA not found in your organization');
     }
 
     await prisma.dsa.delete({ where: { id } });

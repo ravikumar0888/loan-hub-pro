@@ -10,30 +10,55 @@ export class CustomersService {
 
     const where: any = {};
 
+    // Debug logging
+    console.log('[DEBUG] getCustomers called with:', { userId, userRole, organizationId });
+
     // Multi-tenant filtering: filter by organizationId (except for master_admin)
     if (userRole !== 'master_admin' && organizationId) {
       where.organizationId = organizationId;
     }
 
-    // Role-based filtering: connectors can only see their own customers
+    // Role-based filtering
     if (userRole === 'connector') {
+      // Connectors can only see their own customers
       where.connectorId = userId;
+    } else if (userRole === 'backoffice') {
+      // Backoffice can only see customers they created themselves
+      where.createdBy = userId;
+    } else if (userRole === 'admin') {
+      // Admins can ONLY see customers where they are the lead owner
+      where.leadOwner = userId;
     }
+    // Note: Superadmin can see ALL customers in their organization (filtered only by organizationId above)
 
     if (query.status) {
       where.status = query.status;
     }
 
-    if (query.connectorId) {
+    // ConnectorId filter - only apply for non-admin/non-backoffice roles or if explicitly filtering
+    if (query.connectorId && userRole !== 'admin' && userRole !== 'backoffice' && userRole !== 'superadmin') {
       where.connectorId = query.connectorId;
     }
 
+    // Search filter - use AND to avoid overwriting existing OR conditions
     if (query.search) {
-      where.OR = [
+      const searchConditions = [
         { name: { contains: query.search, mode: 'insensitive' } },
         { email: { contains: query.search, mode: 'insensitive' } },
         { mobile: { contains: query.search } },
       ];
+
+      // If there's already an OR clause (from admin filtering), combine with AND
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },  // Preserve existing OR conditions
+          { OR: searchConditions }  // Add search OR conditions
+        ];
+        delete where.OR;  // Remove the top-level OR since we're using AND now
+      } else {
+        // No existing OR clause, just add search conditions
+        where.OR = searchConditions;
+      }
     }
 
     if (query.startDate || query.endDate) {
@@ -46,22 +71,80 @@ export class CustomersService {
       }
     }
 
+    // Debug logging - show final where clause
+    console.log('[DEBUG] Final where clause:', JSON.stringify(where, null, 2));
+
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          applicationId: true,
+          applicationDate: true,
+          name: true,
+          mobile: true,
+          email: true,
+          personalEmail: true,
+          officialEmail: true,
+          loanType: true,
+          loanAmount: true,
+          subventionAmount: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          motherName: true,
+          spouseName: true,
+          panNo: true,
+          date_of_birth: true,
+          current_company_exp: true,
+          totalWorkExperience: true,
+          currentAddress: true,
+          postalAddress: true,
+          homeType: true,
+          reference1Name: true,
+          reference1Mobile: true,
+          reference1Address: true,
+          reference2Name: true,
+          reference2Mobile: true,
+          reference2Address: true,
+          nomineeName: true,
+          nomineeRelation: true,
+          nomineeDateOfBirth: true,
+          connectorId: true,
+          dsaId: true,
+          bankId: true,
+          leadOwner: true,
+          salesManager: true,
+          caseType: true,
+          location: true,
+          organizationId: true,
+          createdBy: true,
           connector: {
             select: {
               id: true,
               firstName: true,
               lastName: true,
               email: true,
+              userBankDetails: {
+                select: {
+                  payoutRatio: true,
+                  loanType: true,
+                  bankId: true,
+                },
+              },
             },
           },
           dsa: {
             select: {
               id: true,
               name: true,
+              bankDetails: {
+                select: {
+                  payoutRatio: true,
+                  loanType: true,
+                  bankId: true,
+                },
+              },
             },
           },
           bank: {
@@ -80,6 +163,7 @@ export class CustomersService {
               },
             },
             orderBy: { createdAt: 'desc' },
+            take: 5,
           },
         },
         skip,
@@ -89,8 +173,86 @@ export class CustomersService {
       prisma.customer.count({ where }),
     ]);
 
+    // Calculate payout for each customer (only for disbursed customers)
+    const customersWithPayout = customers.map((customer: any) => {
+      let payout = 0;
+
+      // Only calculate payout if customer status is 'disbursed'
+      if (customer.status === 'disbursed') {
+        console.log('[PAYOUT DEBUG] Disbursed customer:', {
+          customerId: customer.id,
+          customerName: customer.name,
+          bankId: customer.bankId,
+          loanType: customer.loanType,
+          loanAmount: customer.loanAmount?.toNumber(),
+          subvention: customer.subventionAmount?.toNumber(),
+          connectorId: customer.connectorId,
+          hasConnector: !!customer.connector,
+          connectorBankDetailsCount: customer.connector?.userBankDetails?.length || 0,
+        });
+
+        // Find matching payout ratio from Connector's bank details (not DSA)
+        if (customer.connector?.userBankDetails && customer.connector.userBankDetails.length > 0 && customer.bankId && customer.loanType) {
+          console.log('[PAYOUT DEBUG] Connector bank details:', {
+            customerId: customer.id,
+            availableDetails: customer.connector.userBankDetails.map((bd: any) => ({
+              bankId: bd.bankId,
+              loanType: bd.loanType,
+              ratio: bd.payoutRatio.toNumber(),
+            })),
+          });
+
+          // Filter bank details to match customer's bank and loan type
+          const matchingDetail = customer.connector.userBankDetails.find(
+            (bd: any) => bd.bankId === customer.bankId && bd.loanType === customer.loanType
+          );
+
+          console.log('[PAYOUT DEBUG] Match result:', {
+            customerId: customer.id,
+            searchingFor: { bankId: customer.bankId, loanType: customer.loanType },
+            matchFound: !!matchingDetail,
+          });
+
+          if (matchingDetail) {
+            const payoutRatio = matchingDetail.payoutRatio.toNumber();
+            const loanAmount = customer.loanAmount.toNumber();
+            const subvention = customer.subventionAmount?.toNumber() || 0;
+
+            // Calculate: (loanAmount × payoutRatio%) - subventionAmount
+            payout = (loanAmount * payoutRatio / 100) - subvention;
+
+            console.log('[PAYOUT DEBUG] Payout calculated:', {
+              customerId: customer.id,
+              loanAmount,
+              payoutRatio,
+              subvention,
+              calculatedPayout: payout,
+            });
+          }
+        } else {
+          console.log('[PAYOUT DEBUG] Missing data - cannot calculate:', {
+            customerId: customer.id,
+            hasConnector: !!customer.connector,
+            hasBankDetails: !!(customer.connector?.userBankDetails),
+            bankDetailsCount: customer.connector?.userBankDetails?.length || 0,
+            hasBankId: !!customer.bankId,
+            hasLoanType: !!customer.loanType,
+          });
+        }
+      }
+
+      return {
+        ...customer,
+        payout: payout,
+      };
+    });
+
+    // Debug logging - show results
+    console.log('[DEBUG] Query returned:', { total, returned: customers.length });
+    console.log('[DEBUG] Customer IDs and createdBy:', customers.map(c => ({ id: c.id, createdBy: c.createdBy, orgId: c.organizationId })));
+
     return {
-      data: customers,
+      data: customersWithPayout,
       pagination: {
         page,
         limit,
@@ -148,15 +310,28 @@ export class CustomersService {
       throw new Error('Forbidden - Customer not found in your organization');
     }
 
-    // Connectors can only view their own customers
+    // Role-based access control
     if (userRole === 'connector' && customer.connectorId !== userId) {
+      // Connectors can only view their own customers
       throw new Error('Forbidden - You can only view your own customers');
+    } else if (userRole === 'backoffice' && customer.createdBy !== userId) {
+      // Backoffice can only view customers they created themselves
+      throw new Error('Forbidden - You can only view customers you created');
+    } else if (userRole === 'admin' && customer.leadOwner !== userId) {
+      // Admins can ONLY view customers where they are the lead owner
+      throw new Error('Forbidden - You can only view customers where you are the lead owner');
     }
+    // Note: Superadmin can view ALL customers in their organization (already verified by organization check above)
 
     return customer;
   }
 
-  async createCustomer(data: any, organizationId?: string | null) {
+  async createCustomer(data: any, userId?: string, userRole?: string, organizationId?: string | null) {
+    // Validate organizationId for non-master_admin users
+    if (userRole !== 'master_admin' && !organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     // Helper function to convert date strings to Date objects
     const parseDate = (dateStr: any): Date | undefined => {
       if (!dateStr) return undefined;
@@ -175,10 +350,8 @@ export class CustomersService {
         motherName: data.motherName,
         spouseName: data.spouseName,
         panNo: data.panNo,
-        aadharNo: data.aadharNo,
-        dob: parseDate(data.dateOfBirth || data.dob), // Frontend sends dateOfBirth, backend uses dob
-        currentCompany: data.currentCompany,
-        currentCompanyExperience: data.currentCompanyExp,
+        date_of_birth: parseDate(data.dateOfBirth || data.dob), // Frontend sends dateOfBirth
+        current_company_exp: data.currentCompanyExp,
         totalWorkExperience: data.totalWorkExperience,
         currentAddress: data.currentAddress,
         postalAddress: data.postalAddress,
@@ -260,9 +433,16 @@ export class CustomersService {
       throw new Error('Forbidden - Customer not found in your organization');
     }
 
-    // Connectors cannot update customers (read-only access)
+    // Role-based access control
     if (userRole === 'connector') {
+      // Connectors cannot update customers (read-only access)
       throw new Error('Forbidden - Connectors have read-only access');
+    } else if (userRole === 'backoffice' && customer.createdBy !== userId) {
+      // Backoffice can only update customers they created themselves
+      throw new Error('Forbidden - You can only update customers you created');
+    } else if (userRole === 'admin' && customer.leadOwner !== userId) {
+      // Admins can ONLY update customers where they are the lead owner
+      throw new Error('Forbidden - You can only update customers where you are the lead owner');
     }
 
     const updateData: any = {};
@@ -275,10 +455,8 @@ export class CustomersService {
     if (data.personalEmail !== undefined) updateData.personalEmail = data.personalEmail;
     if (data.officialEmail !== undefined) updateData.officialEmail = data.officialEmail;
     if (data.panNo !== undefined) updateData.panNo = data.panNo;
-    if (data.aadharNo !== undefined) updateData.aadharNo = data.aadharNo;
-    if (data.dateOfBirth !== undefined) updateData.dob = parseDate(data.dateOfBirth || data.dob);
-    if (data.currentCompany !== undefined) updateData.currentCompany = data.currentCompany;
-    if (data.currentCompanyExp !== undefined) updateData.currentCompanyExperience = data.currentCompanyExp;
+    if (data.dateOfBirth !== undefined) updateData.date_of_birth = parseDate(data.dateOfBirth || data.dob);
+    if (data.currentCompanyExp !== undefined) updateData.current_company_exp = data.currentCompanyExp;
     if (data.totalWorkExperience !== undefined) updateData.totalWorkExperience = data.totalWorkExperience;
     if (data.currentAddress !== undefined) updateData.currentAddress = data.currentAddress;
     if (data.postalAddress !== undefined) updateData.postalAddress = data.postalAddress;
@@ -344,11 +522,23 @@ export class CustomersService {
     return updatedCustomer;
   }
 
-  async deleteCustomer(id: string) {
+  async deleteCustomer(id: string, userId?: string, userRole?: string, organizationId?: string | null) {
     const customer = await prisma.customer.findUnique({ where: { id } });
 
     if (!customer) {
       throw new Error('Customer not found');
+    }
+
+    // Multi-tenant check: ensure customer belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && customer.organizationId !== organizationId) {
+      throw new Error('Forbidden - Customer not found in your organization');
+    }
+
+    // Role-based access control - only superadmin and admin can delete
+    if (userRole === 'connector' || userRole === 'backoffice') {
+      throw new Error('Forbidden - You do not have permission to delete customers');
+    } else if (userRole === 'admin' && customer.leadOwner !== userId) {
+      throw new Error('Forbidden - You can only delete customers where you are the lead owner');
     }
 
     await prisma.customer.delete({ where: { id } });
@@ -356,11 +546,25 @@ export class CustomersService {
     return { message: 'Customer deleted successfully' };
   }
 
-  async addRemark(customerId: string, remark: string, createdBy: string) {
+  async addRemark(customerId: string, remark: string, createdBy: string, userId?: string, userRole?: string, organizationId?: string | null) {
     const customer = await prisma.customer.findUnique({ where: { id: customerId } });
 
     if (!customer) {
       throw new Error('Customer not found');
+    }
+
+    // Multi-tenant check: ensure customer belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && customer.organizationId !== organizationId) {
+      throw new Error('Forbidden - Customer not found in your organization');
+    }
+
+    // Role-based access control - users can only add remarks to customers they have access to
+    if (userRole === 'connector' && customer.connectorId !== userId) {
+      throw new Error('Forbidden - You can only add remarks to your own customers');
+    } else if (userRole === 'backoffice' && customer.createdBy !== userId) {
+      throw new Error('Forbidden - You can only add remarks to customers you created');
+    } else if (userRole === 'admin' && customer.leadOwner !== userId) {
+      throw new Error('Forbidden - You can only add remarks to customers where you are the lead owner');
     }
 
     const newRemark = await prisma.customerRemark.create({
@@ -382,11 +586,25 @@ export class CustomersService {
     return newRemark;
   }
 
-  async getCustomerRemarks(customerId: string) {
+  async getCustomerRemarks(customerId: string, userId?: string, userRole?: string, organizationId?: string | null) {
     const customer = await prisma.customer.findUnique({ where: { id: customerId } });
 
     if (!customer) {
       throw new Error('Customer not found');
+    }
+
+    // Multi-tenant check: ensure customer belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && customer.organizationId !== organizationId) {
+      throw new Error('Forbidden - Customer not found in your organization');
+    }
+
+    // Role-based access control - users can only view remarks of customers they have access to
+    if (userRole === 'connector' && customer.connectorId !== userId) {
+      throw new Error('Forbidden - You can only view remarks of your own customers');
+    } else if (userRole === 'backoffice' && customer.createdBy !== userId) {
+      throw new Error('Forbidden - You can only view remarks of customers you created');
+    } else if (userRole === 'admin' && customer.leadOwner !== userId) {
+      throw new Error('Forbidden - You can only view remarks of customers where you are the lead owner');
     }
 
     const remarks = await prisma.customerRemark.findMany({

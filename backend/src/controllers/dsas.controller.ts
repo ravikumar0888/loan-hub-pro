@@ -52,7 +52,12 @@ export class DsasController {
   async updateDsa(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const dsa = await dsasService.updateDsa(id, req.body);
+      const dsa = await dsasService.updateDsa(
+        id,
+        req.body,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -67,7 +72,11 @@ export class DsasController {
   async deleteDsa(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const result = await dsasService.deleteDsa(id);
+      const result = await dsasService.deleteDsa(
+        id,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,

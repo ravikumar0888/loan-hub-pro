@@ -83,6 +83,16 @@ export interface User {
   role: UserRole;
   organizationId?: string | null;
   createdAt: Date;
+  userBankDetails?: Array<{
+    id: string;
+    bankId: string;
+    loanType: LoanType;
+    payoutRatio: number;
+    bank?: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 export interface Bank {
@@ -115,6 +125,7 @@ export interface Customer {
   motherName?: string;
   spouseName?: string;
   mobile: string;
+  email?: string; // Generic email field
   personalEmail?: string;
   panNo?: string;
   aadharNo?: string;
@@ -140,6 +151,7 @@ export interface Customer {
   caseType?: CaseType;
   location?: string;
   subventionAmount?: number;
+  payout?: number; // Calculated payout amount
   // Relationships
   connectorId: string;
   connectorName?: string;

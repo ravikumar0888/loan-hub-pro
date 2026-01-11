@@ -12,7 +12,8 @@ export class DashboardController {
         startDate as string,
         endDate as string,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -28,7 +29,8 @@ export class DashboardController {
     try {
       const trends = await dashboardService.getTrendData(
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({
@@ -46,7 +48,8 @@ export class DashboardController {
       const customers = await dashboardService.getRecentCustomers(
         limit,
         req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        req.organizationId
       );
 
       res.json({

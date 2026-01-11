@@ -43,7 +43,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       label: 'Banks & NBFC',
       icon: Building,
       path: '/banks',
-      roles: ['superadmin', 'admin'],
+      roles: ['superadmin'],
     },
     {
       label: 'Users',
@@ -55,7 +55,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       label: 'Corporate DSA',
       icon: Briefcase,
       path: '/dsa',
-      roles: ['superadmin', 'admin'],
+      roles: ['superadmin'],
     },
     {
       label: 'Payouts',

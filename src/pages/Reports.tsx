@@ -85,7 +85,7 @@ export default function Reports() {
 
   const handleExport = () => {
     // Create CSV content
-    const headers = ['Date', 'Customer Name', 'Mobile', 'Email', 'Loan Type', 'Amount', 'Status', 'Connector'];
+    const headers = ['Date', 'Customer Name', 'Mobile', 'Email', 'Loan Type', 'Amount', 'Payout', 'Status', 'Connector'];
     const rows = filteredData.map((c: any) => [
       format(new Date(c.applicationDate || c.date || c.createdAt), 'yyyy-MM-dd'),
       c.name,
@@ -93,6 +93,7 @@ export default function Reports() {
       c.email || '',
       c.loanType,
       c.loanAmount.toString(),
+      c.status === 'disbursed' && c.calculatedPayout ? c.calculatedPayout.toString() : '0',
       c.status,
       c.connectorName || c.connector?.firstName + ' ' + c.connector?.lastName || '',
     ]);
@@ -125,6 +126,9 @@ export default function Reports() {
   const disbursedAmount = filteredData
     .filter((c: any) => c.status === 'disbursed')
     .reduce((sum: number, c: any) => sum + Number(c.loanAmount), 0);
+  const totalPayout = filteredData
+    .filter((c: any) => c.status === 'disbursed')
+    .reduce((sum: number, c: any) => sum + Number(c.calculatedPayout || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -196,7 +200,7 @@ export default function Reports() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Total Applications</p>
           <p className="text-3xl font-bold text-foreground mt-1">{filteredData.length}</p>
@@ -211,6 +215,12 @@ export default function Reports() {
           <p className="text-sm text-muted-foreground">Disbursed Amount</p>
           <p className="text-3xl font-bold text-success mt-1">
             ₹{disbursedAmount.toLocaleString()}
+          </p>
+        </div>
+        <div className="bg-card rounded-xl p-6 shadow-md">
+          <p className="text-sm text-muted-foreground">Total Payout</p>
+          <p className="text-3xl font-bold text-accent mt-1">
+            ₹{totalPayout.toLocaleString()}
           </p>
         </div>
       </div>
@@ -234,6 +244,7 @@ export default function Reports() {
                   <TableHead>Contact</TableHead>
                   <TableHead>Loan Type</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead>Payout</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Connector</TableHead>
                   <TableHead>Lead Owner</TableHead>
@@ -243,7 +254,7 @@ export default function Reports() {
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12">
+                    <TableCell colSpan={10} className="text-center py-12">
                       <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                       <p className="text-muted-foreground">No data found for selected filters</p>
                     </TableCell>
@@ -266,6 +277,11 @@ export default function Reports() {
                       </TableCell>
                       <TableCell className="font-medium">
                         ₹{Number(customer.loanAmount).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-medium text-accent">
+                        {customer.status === 'disbursed' && customer.calculatedPayout > 0
+                          ? `₹${Number(customer.calculatedPayout).toLocaleString()}`
+                          : '-'}
                       </TableCell>
                       <TableCell>
                         <Badge

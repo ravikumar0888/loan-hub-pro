@@ -48,7 +48,12 @@ export class CustomersController {
         ...req.body,
         createdBy: req.user?.userId,
       };
-      const customer = await customersService.createCustomer(data, req.organizationId);
+      const customer = await customersService.createCustomer(
+        data,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.status(201).json({
         success: true,
@@ -84,7 +89,12 @@ export class CustomersController {
   async deleteCustomer(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const result = await customersService.deleteCustomer(id);
+      const result = await customersService.deleteCustomer(
+        id,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -101,7 +111,14 @@ export class CustomersController {
       const { remark } = req.body;
       const createdBy = req.user?.userId || '';
 
-      const newRemark = await customersService.addRemark(id, remark, createdBy);
+      const newRemark = await customersService.addRemark(
+        id,
+        remark,
+        createdBy,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.status(201).json({
         success: true,
@@ -116,7 +133,12 @@ export class CustomersController {
   async getCustomerRemarks(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const remarks = await customersService.getCustomerRemarks(id);
+      const remarks = await customersService.getCustomerRemarks(
+        id,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,

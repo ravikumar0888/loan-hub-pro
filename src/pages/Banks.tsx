@@ -37,12 +37,15 @@ export default function Banks() {
   const [editError, setEditError] = useState('');
 
   // Fetch banks from backend
-  const { data: banksData, isLoading: isLoadingBanks } = useQuery({
+  const { data: banksData, isLoading: isLoadingBanks, error: queryError } = useQuery({
     queryKey: ['banks'],
     queryFn: async () => {
       const response = await banksApi.getBanks();
       return response.data;
     },
+    refetchOnMount: true,
+    staleTime: 0,
+    retry: 2,
   });
 
   const banks = banksData || [];

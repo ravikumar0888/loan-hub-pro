@@ -31,10 +31,12 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, banksApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Users() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role: currentUserRole } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -230,6 +232,22 @@ export default function Users() {
       password: '',
       role: user.role,
     });
+
+    // Populate bank details if user is a connector and has bank details
+    if (user.role === 'connector' && user.userBankDetails && user.userBankDetails.length > 0) {
+      setBankDetails(
+        user.userBankDetails.map((bd: any) => ({
+          id: bd.id,
+          bankId: bd.bankId,
+          bankName: bd.bank?.name || '',
+          loanType: bd.loanType,
+          payoutRatio: Number(bd.payoutRatio),
+        }))
+      );
+    } else {
+      setBankDetails([]);
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -251,6 +269,14 @@ export default function Users() {
       email: formData.email,
       role: formData.role,
       ...(formData.password && { password: formData.password }),
+      // Include bank details if user is a connector and has bank details
+      ...(formData.role === 'connector' && bankDetails.length > 0 && {
+        bankDetails: bankDetails.map(bd => ({
+          bankId: bd.bankId,
+          loanType: bd.loanType,
+          payoutRatio: bd.payoutRatio,
+        })),
+      }),
     };
 
     if (editingUser) {
@@ -354,7 +380,8 @@ export default function Users() {
                       <SelectValue placeholder="Select user type" />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border">
-                      <SelectItem value="admin">Admin</SelectItem>
+                      {/* Admins can only create Connector and BackOffice users */}
+                      {currentUserRole !== 'admin' && <SelectItem value="admin">Admin</SelectItem>}
                       <SelectItem value="backoffice">BackOffice</SelectItem>
                       <SelectItem value="connector">Connector</SelectItem>
                     </SelectContent>

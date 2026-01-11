@@ -36,7 +36,7 @@ export class PayoutsService {
   /**
    * Add a ledger entry (debit or credit)
    */
-  async addLedgerEntry(data: PayoutLedgerEntry, userId?: string, userRole?: string) {
+  async addLedgerEntry(data: PayoutLedgerEntry, userId?: string, userRole?: string, organizationId?: string | null) {
     // Validate connector exists and is active
     const connector = await prisma.user.findFirst({
       where: {
@@ -44,10 +44,23 @@ export class PayoutsService {
         role: 'connector',
         isActive: true,
       },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        organizationId: true,
+        createdBy: true,
+      },
     });
 
     if (!connector) {
       throw new Error('Connector not found or inactive');
+    }
+
+    // Multi-tenant check: ensure connector belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
+      throw new Error('Forbidden - Connector not found in your organization');
     }
 
     // Role-based authorization
@@ -95,15 +108,28 @@ export class PayoutsService {
     month: number,
     year: number,
     userId?: string,
-    userRole?: string
+    userRole?: string,
+    organizationId?: string | null
   ): Promise<MonthlyPayoutSummary> {
     // Role-based filtering
     const connector = await prisma.user.findFirst({
       where: { id: connectorId, role: 'connector' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        organizationId: true,
+        createdBy: true,
+      },
     });
 
     if (!connector) {
       throw new Error('Connector not found');
+    }
+
+    // Multi-tenant check: ensure connector belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
+      throw new Error('Forbidden - Connector not found in your organization');
     }
 
     // Authorization check
@@ -167,14 +193,27 @@ export class PayoutsService {
   async getConnectorBalance(
     connectorId: string,
     userId?: string,
-    userRole?: string
+    userRole?: string,
+    organizationId?: string | null
   ): Promise<ConnectorBalance> {
     const connector = await prisma.user.findFirst({
       where: { id: connectorId, role: 'connector' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        organizationId: true,
+        createdBy: true,
+      },
     });
 
     if (!connector) {
       throw new Error('Connector not found');
+    }
+
+    // Multi-tenant check: ensure connector belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
+      throw new Error('Forbidden - Connector not found in your organization');
     }
 
     // Authorization check
@@ -211,8 +250,13 @@ export class PayoutsService {
   /**
    * Get all connectors with their balances (SuperAdmin/Admin view)
    */
-  async getAllConnectorBalances(userId?: string, userRole?: string) {
+  async getAllConnectorBalances(userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = { role: 'connector', isActive: true };
+
+    // Multi-tenant filtering: filter by organizationId (except for master_admin)
+    if (userRole !== 'master_admin' && organizationId) {
+      where.organizationId = organizationId;
+    }
 
     // Admin sees only their created connectors
     if (userRole === 'admin') {
@@ -271,7 +315,8 @@ export class PayoutsService {
       entryType?: 'debit' | 'credit';
     },
     userId?: string,
-    userRole?: string
+    userRole?: string,
+    organizationId?: string | null
   ) {
     const where: any = {};
 
@@ -283,23 +328,54 @@ export class PayoutsService {
       if (userRole === 'admin') {
         const connector = await prisma.user.findFirst({
           where: { id: filters.connectorId },
+          select: { organizationId: true, createdBy: true },
         });
-        if (connector?.createdBy !== userId) {
+        if (!connector) {
+          throw new Error('Connector not found');
+        }
+        // Multi-tenant check
+        if (userRole !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
+          throw new Error('Forbidden - Connector not found in your organization');
+        }
+        if (connector.createdBy !== userId) {
           throw new Error('Forbidden - You can only view your own connectors');
         }
       } else if (userRole === 'connector' && filters.connectorId !== userId) {
         throw new Error('Forbidden - You can only view your own ledger');
+      } else if (userRole !== 'master_admin' && userRole !== 'connector') {
+        // For superadmin - verify connector belongs to organization
+        const connector = await prisma.user.findFirst({
+          where: { id: filters.connectorId },
+          select: { organizationId: true },
+        });
+        if (!connector) {
+          throw new Error('Connector not found');
+        }
+        if (organizationId && connector.organizationId !== organizationId) {
+          throw new Error('Forbidden - Connector not found in your organization');
+        }
       }
     } else if (userRole === 'admin') {
-      // Admin sees only their created connectors
+      // Admin sees only their created connectors within their organization
+      const connectorWhere: any = { role: 'connector', createdBy: userId };
+      if (organizationId) {
+        connectorWhere.organizationId = organizationId;
+      }
       const connectors = await prisma.user.findMany({
-        where: { role: 'connector', createdBy: userId },
+        where: connectorWhere,
         select: { id: true },
       });
       where.connectorId = { in: connectors.map((c) => c.id) };
     } else if (userRole === 'connector') {
       // Connector sees only their own entries
       where.connectorId = userId;
+    } else if (userRole !== 'master_admin' && organizationId) {
+      // Superadmin - filter connectors by organization
+      const connectors = await prisma.user.findMany({
+        where: { role: 'connector', organizationId },
+        select: { id: true },
+      });
+      where.connectorId = { in: connectors.map((c) => c.id) };
     }
 
     if (filters.month) where.month = filters.month;
@@ -419,14 +495,26 @@ export class PayoutsService {
   /**
    * Get monthly payouts with accordion structure and carry-forward logic
    */
-  async getMonthlyPayoutsByConnector(connectorId: string, userId?: string, userRole?: string) {
+  async getMonthlyPayoutsByConnector(connectorId: string, userId?: string, userRole?: string, organizationId?: string | null) {
     // Authorization check
     const connector = await prisma.user.findFirst({
       where: { id: connectorId, role: 'connector' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        organizationId: true,
+        createdBy: true,
+      },
     });
 
     if (!connector) {
       throw new Error('Connector not found');
+    }
+
+    // Multi-tenant check: ensure connector belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
+      throw new Error('Forbidden - Connector not found in your organization');
     }
 
     if (userRole === 'admin' && connector.createdBy !== userId) {
@@ -535,9 +623,30 @@ export class PayoutsService {
   /**
    * Delete ledger entry (SuperAdmin only)
    */
-  async deleteLedgerEntry(entryId: string, _userId?: string, userRole?: string) {
-    if (userRole !== 'superadmin') {
-      throw new Error('Forbidden - Only superadmins can delete ledger entries');
+  async deleteLedgerEntry(entryId: string, _userId?: string, userRole?: string, organizationId?: string | null) {
+    if (userRole !== 'superadmin' && userRole !== 'admin') {
+      throw new Error('Forbidden - Only superadmins and admins can delete ledger entries');
+    }
+
+    // Get the ledger entry to check organization
+    const entry = await prisma.payoutLedger.findUnique({
+      where: { id: entryId },
+      include: {
+        connector: {
+          select: {
+            organizationId: true,
+          },
+        },
+      },
+    });
+
+    if (!entry) {
+      throw new Error('Ledger entry not found');
+    }
+
+    // Multi-tenant check: ensure ledger entry's connector belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && entry.connector.organizationId !== organizationId) {
+      throw new Error('Forbidden - Ledger entry not found in your organization');
     }
 
     await prisma.payoutLedger.delete({
@@ -555,7 +664,8 @@ export class PayoutsService {
     month: number,
     year: number,
     userId?: string,
-    userRole?: string
+    userRole?: string,
+    organizationId?: string | null
   ) {
     // Authorization check
     const connector = await prisma.user.findFirst({
@@ -566,12 +676,18 @@ export class PayoutsService {
         lastName: true,
         email: true,
         mobile: true,
+        organizationId: true,
         createdBy: true,
       },
     });
 
     if (!connector) {
       throw new Error('Connector not found');
+    }
+
+    // Multi-tenant check: ensure connector belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
+      throw new Error('Forbidden - Connector not found in your organization');
     }
 
     // Only SuperAdmin/Admin can generate PDFs
@@ -585,7 +701,7 @@ export class PayoutsService {
     }
 
     // Get monthly payout data
-    const monthlyData = await this.getMonthlyPayoutsByConnector(connectorId, userId, userRole);
+    const monthlyData = await this.getMonthlyPayoutsByConnector(connectorId, userId, userRole, organizationId);
     const targetMonth = monthlyData.find(m => m.month === month && m.year === year);
 
     if (!targetMonth) {

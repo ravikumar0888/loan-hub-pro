@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CustomerTableProps {
   customers: Customer[];
@@ -45,10 +46,14 @@ const statusStyles: Record<LoanStatus, string> = {
 };
 
 export default function CustomerTable({ customers, onView, onEdit }: CustomerTableProps) {
+  const { role } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Hide payout column for backoffice users
+  const showPayoutColumn = role !== 'backoffice';
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
@@ -105,7 +110,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
               <TableHead>Contact</TableHead>
               <TableHead>Loan Type</TableHead>
               <TableHead>Amount</TableHead>
+              {showPayoutColumn && <TableHead>Payout</TableHead>}
               <TableHead>Status</TableHead>
+              <TableHead>DSA</TableHead>
               <TableHead>Connector</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -113,7 +120,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
           <TableBody>
             {paginatedCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={showPayoutColumn ? 10 : 9} className="text-center py-8 text-muted-foreground">
                   No customers found
                 </TableCell>
               </TableRow>
@@ -140,6 +147,13 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                   <TableCell className="font-medium">
                     ₹{customer.loanAmount.toLocaleString()}
                   </TableCell>
+                  {showPayoutColumn && (
+                    <TableCell className="font-medium text-success">
+                      {customer.payout !== undefined && customer.payout !== null
+                        ? `₹${customer.payout.toLocaleString()}`
+                        : '-'}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -150,6 +164,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                     >
                       {customer.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {customer.dsa?.name || '-'}
                   </TableCell>
                   <TableCell className="text-sm">
                     {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}

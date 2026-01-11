@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { payoutsApi } from '@/lib/api';
-import { ConnectorBalanceWithUser, User } from '@/types';
+import { payoutsApi, usersApi } from '@/lib/api';
+import { User } from '@/types';
+
+interface ConnectorBalanceWithUser {
+  connector: User;
+  totalEarned: number;
+  totalAdvance: number;
+  currentBalance: number;
+}
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -99,16 +106,18 @@ export default function Payouts() {
         setSelectedConnector(user!.id);
       } else {
         // SuperAdmin/Admin see connectors based on role
+        // Fetch connectors separately to ensure dropdown is always populated
+        const connectorsRes = await usersApi.getConnectors();
+        const connectorList = connectorsRes.data;
+        setConnectors(connectorList);
+
+        // Fetch balances for all connectors
         const balancesRes = await payoutsApi.getAllConnectorBalances();
         setBalances(balancesRes.data);
 
-        // Extract connectors from balances (already role-filtered by backend)
-        const connectorList = balancesRes.data.map((b: any) => b.connector);
-        setConnectors(connectorList);
-
         // Auto-select first connector
-        if (balancesRes.data.length > 0) {
-          setSelectedConnector(balancesRes.data[0].connector.id);
+        if (connectorList.length > 0) {
+          setSelectedConnector(connectorList[0].id);
         }
       }
     } catch (error: any) {
@@ -189,7 +198,7 @@ export default function Payouts() {
     setGeneratingPDF(monthKey);
 
     try {
-      const result = await payoutsApi.generatePayoutPDF(selectedConnector, month, year);
+      const result = await payoutsApi.generatePayoutPDF({ connectorId: selectedConnector, month, year });
       const pdfUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${result.data.pdfUrl}`;
       window.open(pdfUrl, '_blank');
 
@@ -241,9 +250,24 @@ export default function Payouts() {
     );
   }
 
-  const selectedConnectorBalance = balances.find(
+  // Find the selected connector balance or create a default one
+  let selectedConnectorBalance = balances.find(
     (b) => b.connector.id === selectedConnector
   );
+
+  // If no balance found but connector is selected, create a zero balance entry
+  if (!selectedConnectorBalance && selectedConnector) {
+    const connector = connectors.find(c => c.id === selectedConnector) ||
+                     (role === 'connector' ? user : null);
+    if (connector) {
+      selectedConnectorBalance = {
+        connector: connector,
+        totalEarned: 0,
+        totalAdvance: 0,
+        currentBalance: 0,
+      };
+    }
+  }
 
   const currentMonthTotals = getCurrentMonthTotals();
 
@@ -268,34 +292,48 @@ export default function Payouts() {
       </div>
 
       {/* Connector Selector Dropdown - Only for SuperAdmin/Admin */}
-      {(role === 'superadmin' || role === 'admin') && connectors.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Connector</CardTitle>
-            <CardDescription>Choose a connector to view their payout details</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={selectedConnector || ''}
-              onValueChange={(value) => setSelectedConnector(value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a connector" />
-              </SelectTrigger>
-              <SelectContent>
-                {connectors.map((connector) => (
-                  <SelectItem key={connector.id} value={connector.id}>
-                    {connector.firstName} {connector.lastName} ({connector.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+      {(role === 'superadmin' || role === 'admin') && (
+        <>
+          {connectors.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Connector</CardTitle>
+                <CardDescription>Choose a connector to view their payout details</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Select
+                  value={selectedConnector || ''}
+                  onValueChange={(value) => setSelectedConnector(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a connector" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {connectors.map((connector) => (
+                      <SelectItem key={connector.id} value={connector.id}>
+                        {connector.firstName} {connector.lastName} ({connector.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground mb-4">
+                  {role === 'admin'
+                    ? 'No connectors found. Create connector users first to manage their payouts.'
+                    : 'No connectors in your organization. Create connector users first.'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
-      {/* Selected Connector Balance Summary */}
-      {selectedConnectorBalance && (
+      {/* Selected Connector Balance Summary - Show for all roles when connector is selected */}
+      {selectedConnector && selectedConnectorBalance && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
