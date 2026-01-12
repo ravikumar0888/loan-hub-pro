@@ -21,8 +21,11 @@ interface BillingContextType {
 const BillingContext = createContext<BillingContextType | undefined>(undefined);
 
 export function BillingProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
+
+  // Only fetch invoices if user has permission (master_admin, superadmin, or admin)
+  const canAccessInvoices = role === 'master_admin' || role === 'superadmin' || role === 'admin';
 
   // Fetch invoices from backend API
   const { data: invoicesData, isLoading, isError, refetch } = useQuery({
@@ -31,7 +34,7 @@ export function BillingProvider({ children }: { children: ReactNode }) {
       const response = await invoicesApi.getAll();
       return response.data;
     },
-    enabled: !!user, // Only fetch if user is logged in
+    enabled: !!user && canAccessInvoices, // Only fetch if user is logged in AND has permission
   });
 
   const invoices = invoicesData || [];

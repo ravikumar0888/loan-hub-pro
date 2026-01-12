@@ -21,9 +21,21 @@ import Users from "./pages/Users";
 import DSAPage from "./pages/DSA";
 import Reports from "./pages/Reports";
 import Payouts from "./pages/Payouts";
+import Profile from "./pages/Profile";
 import MasterAdminDashboard from "./pages/MasterAdmin";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 0, // Data is always considered stale
+      gcTime: 0, // Garbage collect immediately (formerly cacheTime)
+      refetchOnMount: true, // Always refetch when component mounts
+      refetchOnWindowFocus: true, // Refetch when window regains focus
+      refetchOnReconnect: true, // Refetch when network reconnects
+      retry: 1, // Retry failed requests once
+    },
+  },
+});
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { isAuthenticated, role } = useAuth();
@@ -120,7 +132,7 @@ function AppRoutes() {
       <Route
         path="/payouts"
         element={
-          <ProtectedRoute allowedRoles={['superadmin', 'admin']}>
+          <ProtectedRoute allowedRoles={['superadmin', 'admin', 'connector']}>
             <DashboardLayout title="Payouts" />
           </ProtectedRoute>
         }
@@ -138,7 +150,18 @@ function AppRoutes() {
       >
         <Route index element={<Reports />} />
       </Route>
-      
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute allowedRoles={['superadmin', 'admin', 'backoffice', 'connector']}>
+            <DashboardLayout title="My Profile" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Profile />} />
+      </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

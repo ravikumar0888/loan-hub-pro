@@ -18,7 +18,7 @@ import dsasRoutes from './routes/dsas.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import reportsRoutes from './routes/reports.routes';
 import payoutsRoutes from './routes/payouts.routes';
-// import profileRoutes from './routes/profile.routes';
+import profileRoutes from './routes/profile.routes';
 // import dsaInvoiceRoutes from './routes/dsaInvoice.routes';
 // import chatbotRoutes from './routes/chatbot.routes';
 
@@ -46,6 +46,16 @@ app.use(express.urlencoded({ extended: true }));
 // Static files (for uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 app.use('/pdfs', express.static(path.join(__dirname, '../public/pdfs')));
+
+// Disable caching for all API routes
+app.use('/api', (req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  });
+  next();
+});
 
 // Request logging
 app.use((req, res, next) => {
@@ -88,7 +98,7 @@ app.use('/api/dsas', dsasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/payouts', payoutsRoutes);
-// app.use('/api/profile', organizationContext, profileRoutes);
+app.use('/api/profile', profileRoutes);
 // app.use('/api/dsa-invoices', organizationContext, dsaInvoiceRoutes);
 // app.use('/api/chatbot', organizationContext, chatbotRoutes);
 

@@ -13,5 +13,6 @@ router.use(organizationContext);
 router.get('/kpis', dashboardController.getKPIs.bind(dashboardController));
 router.get('/trends', dashboardController.getTrendData.bind(dashboardController));
 router.get('/recent-customers', dashboardController.getRecentCustomers.bind(dashboardController));
+router.get('/top-performers', dashboardController.getTopPerformers.bind(dashboardController));
 
 export default router;

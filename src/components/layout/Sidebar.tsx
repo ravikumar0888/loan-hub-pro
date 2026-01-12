@@ -14,6 +14,7 @@ import {
   Building2,
   LogOut,
   Wallet,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -61,13 +62,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       label: 'Payouts',
       icon: Wallet,
       path: '/payouts',
-      roles: ['superadmin', 'admin'],
+      roles: ['superadmin', 'admin', 'connector'],
     },
     {
       label: 'Reports',
       icon: FileText,
       path: '/reports',
       roles: ['superadmin', 'admin'],
+    },
+    {
+      label: 'Profile',
+      icon: User,
+      path: '/profile',
+      roles: ['superadmin', 'admin', 'backoffice', 'connector'],
     },
   ];
 

@@ -78,7 +78,7 @@ export class PayoutsService {
       data: {
         connectorId: data.connectorId,
         customerId: data.customerId,
-        entryType: data.entryType,
+        entry_type: data.entryType,
         amount: new Prisma.Decimal(data.amount),
         description: data.description,
         month: data.month,
@@ -149,11 +149,11 @@ export class PayoutsService {
     });
 
     const totalEarned = entries
-      .filter((e) => e.entryType === 'credit')
+      .filter((e) => e.entry_type === 'credit')
       .reduce((sum, e) => sum + Number(e.amount), 0);
 
     const totalAdvance = entries
-      .filter((e) => e.entryType === 'debit')
+      .filter((e) => e.entry_type === 'debit')
       .reduce((sum, e) => sum + Number(e.amount), 0);
 
     const netPayout = totalEarned - totalAdvance;
@@ -170,7 +170,7 @@ export class PayoutsService {
     });
 
     const balance = allEntries.reduce((sum, e) => {
-      return e.entryType === 'credit'
+      return e.entry_type === 'credit'
         ? sum + Number(e.amount)
         : sum - Number(e.amount);
     }, 0);
@@ -229,11 +229,11 @@ export class PayoutsService {
     });
 
     const totalEarned = entries
-      .filter((e) => e.entryType === 'credit')
+      .filter((e) => e.entry_type === 'credit')
       .reduce((sum, e) => sum + Number(e.amount), 0);
 
     const totalAdvance = entries
-      .filter((e) => e.entryType === 'debit')
+      .filter((e) => e.entry_type === 'debit')
       .reduce((sum, e) => sum + Number(e.amount), 0);
 
     const currentBalance = totalEarned - totalAdvance;
@@ -380,7 +380,7 @@ export class PayoutsService {
 
     if (filters.month) where.month = filters.month;
     if (filters.year) where.year = filters.year;
-    if (filters.entryType) where.entryType = filters.entryType;
+    if (filters.entryType) where.entry_type = filters.entryType;
 
     const entries = await prisma.payoutLedger.findMany({
       where,
@@ -416,7 +416,7 @@ export class PayoutsService {
       include: {
         connector: {
           include: {
-            bankDetails: {
+            userBankDetails: {
               include: {
                 bank: true,
               },
@@ -432,7 +432,7 @@ export class PayoutsService {
     }
 
     // Find matching bank detail
-    const bankDetail = customer.connector?.bankDetails?.find(
+    const bankDetail = customer.connector?.userBankDetails?.find(
       (bd) =>
         bd.bank.id === customer.bankId && bd.loanType === customer.loanType
     );
@@ -459,7 +459,7 @@ export class PayoutsService {
       where: {
         connectorId: customer.connectorId,
         customerId: customer.id,
-        entryType: 'credit',
+        entry_type: 'credit',
       },
     });
 
@@ -481,7 +481,7 @@ export class PayoutsService {
       data: {
         connectorId: customer.connectorId,
         customerId: customer.id,
-        entryType: 'credit',
+        entry_type: 'credit',
         amount: new Prisma.Decimal(payout),
         description: `Payout for customer ${customer.name} - ${customer.loanType} - ${customer.bank?.name || 'N/A'}`,
         month,
@@ -577,7 +577,7 @@ export class PayoutsService {
           connectorId,
           customerId: null,
           customerName: null,
-          entryType: 'debit',
+          entry_type: 'debit',
           amount: Math.abs(carryForwardBalance),
           description: 'Advance carry forward from previous month',
           month,
@@ -592,11 +592,11 @@ export class PayoutsService {
 
       // Calculate totals
       const earned = monthEntries
-        .filter((e) => e.entryType === 'credit')
+        .filter((e) => e.entry_type === 'credit')
         .reduce((sum, e) => sum + Number(e.amount), 0);
 
       const advance = monthEntries
-        .filter((e) => e.entryType === 'debit')
+        .filter((e) => e.entry_type === 'debit')
         .reduce((sum, e) => sum + Number(e.amount), 0);
 
       const netAmount = earned - advance;

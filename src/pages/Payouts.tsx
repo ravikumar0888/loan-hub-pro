@@ -337,24 +337,22 @@ export default function Payouts() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Current Balance
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Wallet className="w-4 h-4" />
+                Net Value
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div
                 className={`text-3xl font-bold ${
-                  selectedConnectorBalance.currentBalance >= 0
+                  (currentMonthTotals.earned - currentMonthTotals.advance) >= 0
                     ? 'text-green-600'
                     : 'text-red-600'
                 }`}
               >
-                {formatCurrency(selectedConnectorBalance.currentBalance)}
+                {formatCurrency(currentMonthTotals.earned - currentMonthTotals.advance)}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {selectedConnectorBalance.connector.firstName}{' '}
-                {selectedConnectorBalance.connector.lastName}
-              </p>
+              <p className="text-xs text-muted-foreground mt-2">Current Month (Earned - Advance)</p>
             </CardContent>
           </Card>
 
@@ -500,12 +498,12 @@ export default function Payouts() {
                             </TableCell>
                             <TableCell className="max-w-xs">{entry.description}</TableCell>
                             <TableCell className="text-right font-semibold text-green-600">
-                              {entry.entryType === 'credit'
+                              {entry.entry_type === 'credit'
                                 ? formatCurrency(Number(entry.amount))
                                 : '-'}
                             </TableCell>
                             <TableCell className="text-right font-semibold text-red-600">
-                              {entry.entryType === 'debit'
+                              {entry.entry_type === 'debit'
                                 ? formatCurrency(Number(entry.amount))
                                 : '-'}
                             </TableCell>

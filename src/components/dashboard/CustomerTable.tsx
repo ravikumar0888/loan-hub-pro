@@ -52,8 +52,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Hide payout column for backoffice users
-  const showPayoutColumn = role !== 'backoffice';
+  // Show payout column only for superadmin and connector users
+  // Hide for: admin and backoffice (payout visible only in Reports page for admin)
+  const showPayoutColumn = role === 'superadmin' || role === 'connector';
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
@@ -149,8 +150,8 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                   </TableCell>
                   {showPayoutColumn && (
                     <TableCell className="font-medium text-success">
-                      {customer.payout !== undefined && customer.payout !== null
-                        ? `₹${customer.payout.toLocaleString()}`
+                      {customer.payout !== undefined && customer.payout !== null && customer.payout > 0
+                        ? `₹${Math.round(customer.payout).toLocaleString()}`
                         : '-'}
                     </TableCell>
                   )}

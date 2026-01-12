@@ -102,6 +102,16 @@ export class UsersService {
         mobile: true,
         role: true,
         isActive: true,
+        profilePhoto: true,
+        companyName: true,
+        companyEmail: true,
+        companyAddress: true,
+        companyGSTIN: true,
+        companyState: true,
+        companyStateCode: true,
+        hsnSac: true,
+        cgstRate: true,
+        sgstRate: true,
         createdAt: true,
         updatedAt: true,
         organizationId: true,
@@ -388,5 +398,99 @@ export class UsersService {
     });
 
     return admins;
+  }
+
+  async updateProfile(userId: string, data: any, photoPath?: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check email uniqueness if updating
+    if (data.email && data.email !== user.email) {
+      const existingEmail = await prisma.user.findUnique({
+        where: { email: data.email },
+      });
+      if (existingEmail) {
+        throw new Error('Email already exists');
+      }
+    }
+
+    // Check mobile uniqueness if updating
+    if (data.mobile && data.mobile !== user.mobile) {
+      const existingMobile = await prisma.user.findUnique({
+        where: { mobile: data.mobile },
+      });
+      if (existingMobile) {
+        throw new Error('Mobile number already exists');
+      }
+    }
+
+    const updateData: any = {};
+    if (data.firstName) updateData.firstName = data.firstName;
+    if (data.lastName) updateData.lastName = data.lastName;
+    if (data.email) updateData.email = data.email;
+    if (data.mobile) updateData.mobile = data.mobile;
+    if (photoPath) updateData.profilePhoto = photoPath;
+
+    // Company details (for admin and superadmin)
+    if (data.companyName !== undefined) updateData.companyName = data.companyName;
+    if (data.companyEmail !== undefined) updateData.companyEmail = data.companyEmail;
+    if (data.companyAddress !== undefined) updateData.companyAddress = data.companyAddress;
+    if (data.companyGSTIN !== undefined) updateData.companyGSTIN = data.companyGSTIN;
+    if (data.companyState !== undefined) updateData.companyState = data.companyState;
+    if (data.companyStateCode !== undefined) updateData.companyStateCode = data.companyStateCode;
+    if (data.hsnSac !== undefined) updateData.hsnSac = data.hsnSac;
+    if (data.cgstRate !== undefined) updateData.cgstRate = data.cgstRate;
+    if (data.sgstRate !== undefined) updateData.sgstRate = data.sgstRate;
+
+    // Update password if provided
+    if (data.password) {
+      updateData.passwordHash = await hashPassword(data.password);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        mobile: true,
+        role: true,
+        isActive: true,
+        profilePhoto: true,
+        companyName: true,
+        companyEmail: true,
+        companyAddress: true,
+        companyGSTIN: true,
+        companyState: true,
+        companyStateCode: true,
+        hsnSac: true,
+        cgstRate: true,
+        sgstRate: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedUser;
+  }
+
+  async deleteProfilePhoto(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { profilePhoto: null },
+    });
+
+    return { message: 'Profile photo deleted successfully' };
   }
 }

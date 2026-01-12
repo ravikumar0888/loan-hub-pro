@@ -83,34 +83,47 @@ export default function Reports() {
   const dsas = dsasData || [];
   const filteredData = reportData || [];
 
-  const handleExport = () => {
-    // Create CSV content
-    const headers = ['Date', 'Customer Name', 'Mobile', 'Email', 'Loan Type', 'Amount', 'Payout', 'Status', 'Connector'];
-    const rows = filteredData.map((c: any) => [
-      format(new Date(c.applicationDate || c.date || c.createdAt), 'yyyy-MM-dd'),
-      c.name,
-      c.mobile,
-      c.email || '',
-      c.loanType,
-      c.loanAmount.toString(),
-      c.status === 'disbursed' && c.calculatedPayout ? c.calculatedPayout.toString() : '0',
-      c.status,
-      c.connectorName || c.connector?.firstName + ' ' + c.connector?.lastName || '',
-    ]);
+  const handleExport = async () => {
+    try {
+      // Build query params
+      const params: any = {};
+      if (dateRange.from) params.startDate = dateRange.from.toISOString();
+      if (dateRange.to) params.endDate = dateRange.to.toISOString();
+      if (selectedDSA !== 'all') params.dsaId = selectedDSA;
+      if (selectedConnector !== 'all') params.connectorId = selectedConnector;
 
-    const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `loan-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      // Call backend export API to get CSV with all financial calculations
+      const blob = await reportsApi.exportReport(params);
 
-    toast({
-      title: 'Export Successful',
-      description: 'Report has been downloaded as CSV.',
-    });
+      // Check if blob has content
+      if (blob.size === 0) {
+        toast({
+          title: 'No Data',
+          description: 'No data available to export for the selected filters.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `loan-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export Successful',
+        description: 'Report has been downloaded as CSV with all financial calculations.',
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export report. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleReset = () => {
@@ -128,7 +141,7 @@ export default function Reports() {
     .reduce((sum: number, c: any) => sum + Number(c.loanAmount), 0);
   const totalPayout = filteredData
     .filter((c: any) => c.status === 'disbursed')
-    .reduce((sum: number, c: any) => sum + Number(c.calculatedPayout || 0), 0);
+    .reduce((sum: number, c: any) => sum + Number(c.connectorPayout || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -279,8 +292,8 @@ export default function Reports() {
                         ₹{Number(customer.loanAmount).toLocaleString()}
                       </TableCell>
                       <TableCell className="font-medium text-accent">
-                        {customer.status === 'disbursed' && customer.calculatedPayout > 0
-                          ? `₹${Number(customer.calculatedPayout).toLocaleString()}`
+                        {customer.status === 'disbursed' && customer.connectorPayout > 0
+                          ? `₹${Number(customer.connectorPayout).toLocaleString()}`
                           : '-'}
                       </TableCell>
                       <TableCell>
@@ -292,8 +305,8 @@ export default function Reports() {
                         </Badge>
                       </TableCell>
                       <TableCell>{customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}</TableCell>
-                      <TableCell>{customer.leadOwner || '-'}</TableCell>
-                      <TableCell>{customer.salesManager || '-'}</TableCell>
+                      <TableCell>{customer.leadOwnerName || '-'}</TableCell>
+                      <TableCell>{customer.salesManagerName || '-'}</TableCell>
                     </TableRow>
                   ))
                 )}

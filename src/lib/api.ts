@@ -25,6 +25,9 @@ async function apiRequest<T>(
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
     ...options.headers,
   };
 
@@ -225,6 +228,11 @@ export const dashboardApi = {
     apiRequest<{ success: boolean; data: any[] }>(
       `/dashboard/recent-customers${params ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
+
+  getTopPerformers: (params?: Record<string, any>) =>
+    apiRequest<{ success: boolean; data: any }>(
+      `/dashboard/top-performers${params ? `?${new URLSearchParams(params).toString()}` : ''}`
+    ),
 };
 
 // Reports API
@@ -241,17 +249,36 @@ export const reportsApi = {
 
   exportReport: async (params?: Record<string, any>): Promise<Blob> => {
     const token = getAuthToken();
+
+    // Filter out undefined values from params
+    const filteredParams: Record<string, string> = {};
+    if (params) {
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          filteredParams[key] = String(params[key]);
+        }
+      });
+    }
+
+    const queryString = Object.keys(filteredParams).length > 0
+      ? `?${new URLSearchParams(filteredParams).toString()}`
+      : '';
+
     const response = await fetch(
-      `${API_URL}/reports/export?${new URLSearchParams(params).toString()}`,
+      `${API_URL}/reports/export${queryString}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );
 
     if (!response.ok) {
-      throw new Error('Export failed');
+      const errorText = await response.text();
+      throw new Error(`Export failed: ${response.status} - ${errorText}`);
     }
 
     return response.blob();
@@ -365,5 +392,73 @@ export const signupApi = {
     apiRequest<{ success: boolean; data: any }>('/signup', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+};
+
+// Profile API
+export const profileApi = {
+  getProfile: () =>
+    apiRequest<{ success: boolean; data: any }>('/profile/me'),
+
+  updateProfile: async (data: any, photo?: File) => {
+    const token = getAuthToken();
+    const formData = new FormData();
+
+    // Append all profile data fields
+    Object.keys(data).forEach(key => {
+      if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+        formData.append(key, data[key]);
+      }
+    });
+
+    // Append photo if provided
+    if (photo) {
+      formData.append('profilePhoto', photo);
+    }
+
+    const response = await fetch(`${API_URL}/profile/me`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: 'An error occurred',
+      }));
+      throw new Error(error.error || error.message || 'Update failed');
+    }
+
+    return response.json();
+  },
+
+  uploadPhoto: async (photo: File) => {
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('profilePhoto', photo);
+
+    const response = await fetch(`${API_URL}/profile/me/photo`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: 'An error occurred',
+      }));
+      throw new Error(error.error || error.message || 'Upload failed');
+    }
+
+    return response.json();
+  },
+
+  deletePhoto: () =>
+    apiRequest<{ success: boolean; message: string }>('/profile/me/photo', {
+      method: 'DELETE',
     }),
 };

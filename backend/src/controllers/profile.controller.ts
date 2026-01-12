@@ -9,8 +9,8 @@ export class ProfileController {
     try {
       const user = await usersService.getUserById(
         req.user!.userId,
-        req.user?.userId,
-        req.user?.role
+        req.user?.role,
+        null // Profile access doesn't need org filtering
       );
 
       res.json({

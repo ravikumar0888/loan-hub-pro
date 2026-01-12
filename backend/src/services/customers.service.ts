@@ -1,8 +1,48 @@
 import prisma from '../config/database';
 import { PAGINATION_DEFAULTS } from '../config/constants';
 import { CustomerFilterQuery } from '../types';
+import { PayoutsService } from './payouts.service';
 
 export class CustomersService {
+  private payoutsService: PayoutsService;
+
+  constructor() {
+    this.payoutsService = new PayoutsService();
+  }
+  // Transform database customer format to frontend format
+  private transformCustomer(customer: any) {
+    return {
+      ...customer,
+      // Map database snake_case to camelCase
+      dateOfBirth: customer.date_of_birth,
+      currentCompanyExperience: customer.current_company_exp,
+      // Transform flat reference fields to nested objects
+      reference1: customer.reference1Name || customer.reference1Mobile || customer.reference1Address
+        ? {
+            name: customer.reference1Name || '',
+            mobile: customer.reference1Mobile || '',
+            address: customer.reference1Address || '',
+          }
+        : undefined,
+      reference2: customer.reference2Name || customer.reference2Mobile || customer.reference2Address
+        ? {
+            name: customer.reference2Name || '',
+            mobile: customer.reference2Mobile || '',
+            address: customer.reference2Address || '',
+          }
+        : undefined,
+      // Remove duplicate database fields
+      date_of_birth: undefined,
+      current_company_exp: undefined,
+      reference1Name: undefined,
+      reference1Mobile: undefined,
+      reference1Address: undefined,
+      reference2Name: undefined,
+      reference2Mobile: undefined,
+      reference2Address: undefined,
+    };
+  }
+
   async getCustomers(query: CustomerFilterQuery, userId?: string, userRole?: string, organizationId?: string | null) {
     const page = query.page || PAGINATION_DEFAULTS.page;
     const limit = Math.min(query.limit || PAGINATION_DEFAULTS.limit, PAGINATION_DEFAULTS.maxLimit);
@@ -173,45 +213,18 @@ export class CustomersService {
       prisma.customer.count({ where }),
     ]);
 
-    // Calculate payout for each customer (only for disbursed customers)
+    // Calculate payout and transform for each customer
     const customersWithPayout = customers.map((customer: any) => {
       let payout = 0;
 
       // Only calculate payout if customer status is 'disbursed'
       if (customer.status === 'disbursed') {
-        console.log('[PAYOUT DEBUG] Disbursed customer:', {
-          customerId: customer.id,
-          customerName: customer.name,
-          bankId: customer.bankId,
-          loanType: customer.loanType,
-          loanAmount: customer.loanAmount?.toNumber(),
-          subvention: customer.subventionAmount?.toNumber(),
-          connectorId: customer.connectorId,
-          hasConnector: !!customer.connector,
-          connectorBankDetailsCount: customer.connector?.userBankDetails?.length || 0,
-        });
-
-        // Find matching payout ratio from Connector's bank details (not DSA)
+        // Find matching payout ratio from Connector's user bank details
         if (customer.connector?.userBankDetails && customer.connector.userBankDetails.length > 0 && customer.bankId && customer.loanType) {
-          console.log('[PAYOUT DEBUG] Connector bank details:', {
-            customerId: customer.id,
-            availableDetails: customer.connector.userBankDetails.map((bd: any) => ({
-              bankId: bd.bankId,
-              loanType: bd.loanType,
-              ratio: bd.payoutRatio.toNumber(),
-            })),
-          });
-
           // Filter bank details to match customer's bank and loan type
           const matchingDetail = customer.connector.userBankDetails.find(
             (bd: any) => bd.bankId === customer.bankId && bd.loanType === customer.loanType
           );
-
-          console.log('[PAYOUT DEBUG] Match result:', {
-            customerId: customer.id,
-            searchingFor: { bankId: customer.bankId, loanType: customer.loanType },
-            matchFound: !!matchingDetail,
-          });
 
           if (matchingDetail) {
             const payoutRatio = matchingDetail.payoutRatio.toNumber();
@@ -220,31 +233,15 @@ export class CustomersService {
 
             // Calculate: (loanAmount × payoutRatio%) - subventionAmount
             payout = (loanAmount * payoutRatio / 100) - subvention;
-
-            console.log('[PAYOUT DEBUG] Payout calculated:', {
-              customerId: customer.id,
-              loanAmount,
-              payoutRatio,
-              subvention,
-              calculatedPayout: payout,
-            });
           }
-        } else {
-          console.log('[PAYOUT DEBUG] Missing data - cannot calculate:', {
-            customerId: customer.id,
-            hasConnector: !!customer.connector,
-            hasBankDetails: !!(customer.connector?.userBankDetails),
-            bankDetailsCount: customer.connector?.userBankDetails?.length || 0,
-            hasBankId: !!customer.bankId,
-            hasLoanType: !!customer.loanType,
-          });
         }
       }
 
-      return {
+      // Transform customer data format and add payout
+      return this.transformCustomer({
         ...customer,
         payout: payout,
-      };
+      });
     });
 
     // Debug logging - show results
@@ -323,7 +320,7 @@ export class CustomersService {
     }
     // Note: Superadmin can view ALL customers in their organization (already verified by organization check above)
 
-    return customer;
+    return this.transformCustomer(customer);
   }
 
   async createCustomer(data: any, userId?: string, userRole?: string, organizationId?: string | null) {
@@ -411,7 +408,18 @@ export class CustomersService {
       },
     });
 
-    return customer;
+    // Auto-generate payout entry if created with 'disbursed' status
+    if (customer.status === 'disbursed') {
+      try {
+        await this.payoutsService.generatePayoutForDisbursedCustomer(customer.id);
+        console.log(`[INFO] Auto-generated payout entry for newly created customer ${customer.id}`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to auto-generate payout for customer ${customer.id}:`, error);
+        // Don't fail the create if payout generation fails
+      }
+    }
+
+    return this.transformCustomer(customer);
   }
 
   async updateCustomer(id: string, data: any, userId?: string, userRole?: string, organizationId?: string | null) {
@@ -519,7 +527,18 @@ export class CustomersService {
       },
     });
 
-    return updatedCustomer;
+    // Auto-generate payout entry if status changed to 'disbursed'
+    if (data.status === 'disbursed' && customer.status !== 'disbursed') {
+      try {
+        await this.payoutsService.generatePayoutForDisbursedCustomer(id);
+        console.log(`[INFO] Auto-generated payout entry for customer ${id}`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to auto-generate payout for customer ${id}:`, error);
+        // Don't fail the update if payout generation fails
+      }
+    }
+
+    return this.transformCustomer(updatedCustomer);
   }
 
   async deleteCustomer(id: string, userId?: string, userRole?: string, organizationId?: string | null) {

@@ -14,6 +14,24 @@ export class ReportsService {
     // Role-based filtering
     if (userRole === 'connector') {
       where.connectorId = userId;
+    } else if (userRole === 'admin') {
+      // Admins can only see customers from connectors they created
+      const adminConnectors = await prisma.user.findMany({
+        where: {
+          createdBy: userId,
+          role: 'connector',
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      const connectorIds = adminConnectors.map(c => c.id);
+      if (connectorIds.length > 0) {
+        where.connectorId = { in: connectorIds };
+      } else {
+        // No connectors found, return empty result
+        where.connectorId = 'none';
+      }
     }
 
     // Apply filters
@@ -43,7 +61,7 @@ export class ReportsService {
             firstName: true,
             lastName: true,
             email: true,
-            bankDetails: {
+            userBankDetails: {
               include: {
                 bank: true,
               },
@@ -67,6 +85,13 @@ export class ReportsService {
             },
           },
         },
+        leadOwnerUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
         remarks: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -77,29 +102,59 @@ export class ReportsService {
 
     // Calculate payout for each customer
     const customersWithPayout = customers.map((customer) => {
-      let calculatedPayout = 0;
+      let connectorPayout = 0;
+      let dsaPayout = 0;
+      let tds = 0;
+      let netPay = 0;
+      let netRevenue = 0;
 
       if (customer.status === 'disbursed') {
-        // Find matching payout ratio from connector's bank details
-        const connectorBankDetail = customer.connector?.bankDetails?.find(
+        const loanAmount = Number(customer.loanAmount);
+        const subvention = customer.subventionAmount ? Number(customer.subventionAmount) : 0;
+
+        // Calculate Connector Payout
+        const connectorBankDetail = customer.connector?.userBankDetails?.find(
           (bd) => bd.bankId === customer.bankId && bd.loanType === customer.loanType
         );
 
         if (connectorBankDetail) {
-          // Calculate payout: (loanAmount × payoutRatio%) - subventionAmount
-          calculatedPayout = (Number(customer.loanAmount) * Number(connectorBankDetail.payoutRatio)) / 100;
+          // Connector Payout: (loanAmount × payoutRatio%) - subventionAmount
+          connectorPayout = (loanAmount * Number(connectorBankDetail.payoutRatio)) / 100 - subvention;
+        }
 
-          if (customer.subventionAmount) {
-            calculatedPayout -= Number(customer.subventionAmount);
-          }
+        // Calculate DSA Payout
+        const dsaBankDetail = customer.dsa?.bankDetails?.find(
+          (bd) => bd.bankId === customer.bankId && bd.loanType === customer.loanType
+        );
+
+        if (dsaBankDetail) {
+          // DSA Payout: (loanAmount × payoutRatio%) - NO subvention deduction
+          dsaPayout = (loanAmount * Number(dsaBankDetail.payoutRatio)) / 100;
+
+          // TDS: 2% of DSA Payout
+          tds = dsaPayout * 0.02;
+
+          // NetPay: DSA Payout - TDS
+          netPay = dsaPayout - tds;
+
+          // Net Revenue: NetPay - Connector Payout
+          netRevenue = netPay - connectorPayout;
         }
       }
 
       return {
         ...customer,
-        calculatedPayout,
+        connectorPayout,
+        dsaPayout,
+        tds,
+        netPay,
+        netRevenue,
         loanAmount: Number(customer.loanAmount),
         subventionAmount: customer.subventionAmount ? Number(customer.subventionAmount) : 0,
+        leadOwnerName: customer.leadOwnerUser
+          ? `${customer.leadOwnerUser.firstName} ${customer.leadOwnerUser.lastName}`
+          : null,
+        salesManagerName: customer.salesManager || null,
       };
     });
 
@@ -117,6 +172,24 @@ export class ReportsService {
     // Role-based filtering
     if (userRole === 'connector') {
       where.connectorId = userId;
+    } else if (userRole === 'admin') {
+      // Admins can only see customers from connectors they created
+      const adminConnectors = await prisma.user.findMany({
+        where: {
+          createdBy: userId,
+          role: 'connector',
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      const connectorIds = adminConnectors.map(c => c.id);
+      if (connectorIds.length > 0) {
+        where.connectorId = { in: connectorIds };
+      } else {
+        // No connectors found, return empty result
+        where.connectorId = 'none';
+      }
     }
 
     // Apply filters
@@ -168,10 +241,18 @@ export class ReportsService {
       'Email',
       'Loan Type',
       'Loan Amount',
+      'Subvention',
+      'Bank',
+      'DSA',
       'Connector',
       'Lead Owner',
       'Sales Manager',
       'Status',
+      'DSA Payout',
+      'TDS (2%)',
+      'NetPay',
+      'Connector Payout',
+      'Net Revenue',
       'Latest Remark',
     ];
 
@@ -181,13 +262,21 @@ export class ReportsService {
       customer.mobile,
       customer.email || '',
       customer.loanType,
-      customer.loanAmount,
+      customer.loanAmount || 0,
+      customer.subventionAmount || 0,
+      customer.bank?.name || '',
+      customer.dsa?.name || '',
       customer.connector
         ? `${customer.connector.firstName} ${customer.connector.lastName}`
         : '',
-      customer.leadOwner || '',
-      customer.salesManager || '',
+      customer.leadOwnerName || '',
+      customer.salesManagerName || '',
       customer.status,
+      customer.dsaPayout?.toFixed(2) || '0.00',
+      customer.tds?.toFixed(2) || '0.00',
+      customer.netPay?.toFixed(2) || '0.00',
+      customer.connectorPayout?.toFixed(2) || '0.00',
+      customer.netRevenue?.toFixed(2) || '0.00',
       customer.remarks && customer.remarks.length > 0
         ? customer.remarks[0].remark
         : '',

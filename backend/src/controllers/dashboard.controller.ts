@@ -60,4 +60,27 @@ export class DashboardController {
       next(error);
     }
   }
+
+  async getTopPerformers(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { month, year } = req.query;
+      const currentMonth = month ? parseInt(month as string) : new Date().getMonth() + 1;
+      const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+
+      const topPerformers = await dashboardService.getTopPerformers(
+        currentMonth,
+        currentYear,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
+
+      res.json({
+        success: true,
+        data: topPerformers,
+      });
+    } catch (error: any) {
+      next(error);
+    }
+  }
 }

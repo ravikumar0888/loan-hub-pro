@@ -360,8 +360,8 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Company Details (Admin Only) */}
-        {role === 'admin' && (
+        {/* Company Details (Admin and Superadmin) */}
+        {(role === 'admin' || role === 'superadmin') && (
           <Card>
             <CardHeader>
               <CardTitle>Company Details</CardTitle>

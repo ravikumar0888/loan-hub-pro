@@ -139,3 +139,14 @@ export interface UserQuery extends PaginationQuery {
   role?: UserRole;
   search?: string;
 }
+
+// ==================== REPORT TYPES ====================
+
+export interface ReportQuery extends PaginationQuery {
+  startDate?: string;
+  endDate?: string;
+  connectorId?: string;
+  dsaId?: string;
+  bankId?: string;
+  status?: LoanStatus;
+}
