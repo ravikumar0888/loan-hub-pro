@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import CustomerTable from '@/components/dashboard/CustomerTable';
 import CustomerFormDialog from '@/components/customer/CustomerFormDialog';
-import CustomerRemarks from '@/components/customer/CustomerRemarks';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +14,6 @@ export default function Customers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
-  const [isRemarksDialogOpen, setIsRemarksDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formMode, setFormMode] = useState<'add' | 'edit' | 'view'>('add');
 
@@ -110,11 +108,6 @@ export default function Customers() {
     setIsFormDialogOpen(true);
   };
 
-  const handleViewRemarks = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setIsRemarksDialogOpen(true);
-  };
-
   const canAddCustomer = role === 'superadmin' || role === 'admin' || role === 'backoffice';
 
   if (isLoadingCustomers) {
@@ -147,7 +140,6 @@ export default function Customers() {
         customers={customers}
         onView={handleView}
         onEdit={handleEdit}
-        onViewRemarks={handleViewRemarks}
       />
 
       <CustomerFormDialog
@@ -157,14 +149,6 @@ export default function Customers() {
         mode={formMode}
         onSave={handleSaveCustomer}
       />
-
-      {selectedCustomer && (
-        <CustomerRemarks
-          open={isRemarksDialogOpen}
-          onOpenChange={setIsRemarksDialogOpen}
-          customer={selectedCustomer}
-        />
-      )}
     </div>
   );
 }

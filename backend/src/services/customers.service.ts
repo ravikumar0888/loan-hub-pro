@@ -16,6 +16,7 @@ export class CustomersService {
       ...customer,
       // Map database snake_case to camelCase
       dateOfBirth: customer.date_of_birth,
+      currentCompany: customer.currentCompany,
       currentCompanyExperience: customer.current_company_exp,
       // Transform flat reference fields to nested objects
       reference1: customer.reference1Name || customer.reference1Mobile || customer.reference1Address
@@ -352,6 +353,7 @@ export class CustomersService {
         spouseName: data.spouseName,
         panNo: data.panNo,
         date_of_birth: parseDate(data.dateOfBirth || data.dob), // Frontend sends dateOfBirth
+        currentCompany: data.currentCompany,
         current_company_exp: data.currentCompanyExp,
         totalWorkExperience: data.totalWorkExperience,
         currentAddress: data.currentAddress,
@@ -428,11 +430,25 @@ export class CustomersService {
       const pdfUrl = await PDFService.generateCustomerPDF(customer.id);
       console.log(`[INFO] Generated PDF for customer ${customer.id}: ${pdfUrl}`);
 
-      // Update customer with PDF URL
-      await prisma.customer.update({
+      // Refresh customer data to include the pdfUrl
+      customer = await prisma.customer.findUnique({
         where: { id: customer.id },
-        data: { pdfUrl },
-      });
+        include: {
+          connector: {
+            include: {
+              userBankDetails: {
+                include: {
+                  bank: true,
+                },
+              },
+            },
+          },
+          bank: true,
+          dsa: true,
+          leadOwnerUser: true,
+          creator: true,
+        },
+      }) as any;
     } catch (pdfError) {
       console.error(`[ERROR] Failed to generate PDF for customer ${customer.id}:`, pdfError);
       // Don't fail the whole operation if PDF generation fails
@@ -483,6 +499,7 @@ export class CustomersService {
     if (data.officialEmail !== undefined) updateData.officialEmail = data.officialEmail;
     if (data.panNo !== undefined) updateData.panNo = data.panNo;
     if (data.dateOfBirth !== undefined) updateData.date_of_birth = parseDate(data.dateOfBirth || data.dob);
+    if (data.currentCompany !== undefined) updateData.currentCompany = data.currentCompany;
     if (data.currentCompanyExp !== undefined) updateData.current_company_exp = data.currentCompanyExp;
     if (data.totalWorkExperience !== undefined) updateData.totalWorkExperience = data.totalWorkExperience;
     if (data.currentAddress !== undefined) updateData.currentAddress = data.currentAddress;
@@ -572,10 +589,26 @@ export class CustomersService {
     try {
       const pdfUrl = await PDFService.regenerateCustomerPDF(id);
       console.log(`[INFO] Regenerated PDF for customer ${id}: ${pdfUrl}`);
-      await prisma.customer.update({
+
+      // Refresh customer data to include the updated pdfUrl
+      updatedCustomer = await prisma.customer.findUnique({
         where: { id },
-        data: { pdfUrl }
-      });
+        include: {
+          connector: {
+            include: {
+              userBankDetails: {
+                include: {
+                  bank: true,
+                },
+              },
+            },
+          },
+          bank: true,
+          dsa: true,
+          leadOwnerUser: true,
+          creator: true,
+        },
+      }) as any;
     } catch (pdfError) {
       console.error(`[ERROR] Failed to regenerate PDF for customer ${id}:`, pdfError);
       // Don't fail the update if PDF generation fails

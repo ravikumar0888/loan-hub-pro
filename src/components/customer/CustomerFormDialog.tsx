@@ -230,6 +230,7 @@ export default function CustomerFormDialog({
         personalEmail: formData.personalEmail || undefined,
         officialEmail: formData.officialEmail || undefined,
         totalWorkExperience: formData.totalWorkExperience || undefined,
+        currentCompany: formData.currentCompany || undefined,
         currentCompanyExp: formData.currentCompanyExperience || undefined,
         currentAddress: formData.currentAddress || undefined,
         postalAddress: formData.postalAddress || undefined,
@@ -770,43 +771,45 @@ export default function CustomerFormDialog({
             </div>
           </div>
 
-          {/* Remarks Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">
-              Remarks
-            </h3>
-            
-            {/* Existing Remarks - Visible to everyone */}
-            {customer?.remarks && customer.remarks.length > 0 && (
-              <div className="space-y-2">
-                <Label>Previous Remarks</Label>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {customer.remarks.map((remark: any, index) => (
-                    <div key={index} className="p-3 bg-muted/50 rounded-lg text-sm">
-                      <p className="text-foreground">{remark.text || remark.remark}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        By {remark.addedBy || (remark.user ? `${remark.user.firstName} ${remark.user.lastName}` : 'Unknown')} on {format(new Date(remark.addedAt || remark.createdAt), 'PPp')}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* Remarks Section - Only show if user can add remarks OR there are existing remarks */}
+          {(canAddRemark || (customer?.remarks && customer.remarks.length > 0)) && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">
+                Remarks
+              </h3>
 
-            {/* Add New Remark - Only for Admin and BackOffice */}
-            {canAddRemark && !isReadOnly && (
-              <div className="space-y-2">
-                <Label htmlFor="newRemark">Add New Remark</Label>
-                <Textarea
-                  id="newRemark"
-                  value={formData.newRemark}
-                  onChange={(e) => setFormData({ ...formData, newRemark: e.target.value })}
-                  placeholder="Add a comment or note..."
-                  rows={3}
-                />
-              </div>
-            )}
-          </div>
+              {/* Existing Remarks - Visible to everyone */}
+              {customer?.remarks && customer.remarks.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Previous Remarks</Label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {customer.remarks.map((remark: any, index) => (
+                      <div key={index} className="p-3 bg-muted/50 rounded-lg text-sm">
+                        <p className="text-foreground">{remark.text || remark.remark}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          By {remark.addedBy || (remark.user ? `${remark.user.firstName} ${remark.user.lastName}` : 'Unknown')} on {format(new Date(remark.addedAt || remark.createdAt), 'PPp')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add New Remark - Only for Admin and BackOffice */}
+              {canAddRemark && !isReadOnly && (
+                <div className="space-y-2">
+                  <Label htmlFor="newRemark">Add New Remark</Label>
+                  <Textarea
+                    id="newRemark"
+                    value={formData.newRemark}
+                    onChange={(e) => setFormData({ ...formData, newRemark: e.target.value })}
+                    placeholder="Add a comment or note..."
+                    rows={3}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">

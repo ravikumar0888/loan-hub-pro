@@ -118,6 +118,7 @@ model Customer {
   caseType            CaseType?        @map("case_type")
   createdBy           String?          @map("created_by")
   currentAddress      String?          @map("current_address")
+  currentCompany      String?          @map("current_company") @db.VarChar(255)
   current_company_exp String?          @db.VarChar(50)
   date_of_birth       DateTime?        @db.Date
   dsaId               String?          @map("dsa_id")
