@@ -32,6 +32,16 @@ import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, banksApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+
+const ITEMS_PER_PAGE = 15;
 
 export default function Users() {
   const { toast } = useToast();
@@ -39,6 +49,7 @@ export default function Users() {
   const { role: currentUserRole } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [formData, setFormData] = useState({
@@ -81,6 +92,18 @@ export default function Users() {
       user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.mobile?.includes(searchQuery)
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const roleStyles: Record<UserRole, string> = {
     master_admin: 'bg-accent/10 text-accent border-accent/20',
@@ -520,7 +543,7 @@ export default function Users() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -530,7 +553,7 @@ export default function Users() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user: User) => (
+                paginatedUsers.map((user: User) => (
                   <TableRow key={user.id} className="table-row-hover">
                     <TableCell className="font-medium">
                       {user.firstName} {user.lastName}
@@ -574,6 +597,51 @@ export default function Users() {
               )}
             </TableBody>
           </Table>
+        )}
+
+        {/* Pagination - only show if more than 15 records */}
+        {!usersLoading && filteredUsers.length > ITEMS_PER_PAGE && (
+          <div className="p-4 border-t border-border">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    className={
+                      currentPage === 1
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    }
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(page)}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    className={
+                      currentPage === totalPages
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         )}
       </div>
     </div>

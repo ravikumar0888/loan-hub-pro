@@ -13,6 +13,12 @@ export class DashboardService {
     // Role-based filtering
     if (userRole === 'connector') {
       where.connectorId = userId;
+    } else if (userRole === 'admin' && userId) {
+      // Admin sees only customers where they are the lead owner
+      where.leadOwner = userId;
+    } else if (userRole === 'backoffice' && userId) {
+      // Backoffice sees only customers they created
+      where.createdBy = userId;
     }
 
     // Date filtering
@@ -66,6 +72,10 @@ export class DashboardService {
     // Role-based filtering
     if (userRole === 'connector') {
       where.connectorId = userId;
+    } else if (userRole === 'admin' && userId) {
+      where.leadOwner = userId;
+    } else if (userRole === 'backoffice' && userId) {
+      where.createdBy = userId;
     }
 
     // Get data for last 6 months
@@ -119,6 +129,10 @@ export class DashboardService {
     // Role-based filtering
     if (userRole === 'connector') {
       where.connectorId = userId;
+    } else if (userRole === 'admin' && userId) {
+      where.leadOwner = userId;
+    } else if (userRole === 'backoffice' && userId) {
+      where.createdBy = userId;
     }
 
     const customers = await prisma.customer.findMany({
@@ -146,6 +160,15 @@ export class DashboardService {
     // Multi-tenant filtering
     if (userRole !== 'master_admin' && organizationId) {
       where.organizationId = organizationId;
+    }
+
+    // Role-based filtering
+    if (userRole === 'connector' && userId) {
+      where.connectorId = userId;
+    } else if (userRole === 'admin' && userId) {
+      where.leadOwner = userId;
+    } else if (userRole === 'backoffice' && userId) {
+      where.createdBy = userId;
     }
 
     // Filter by specified month and year

@@ -261,33 +261,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-            
-            {/* Demo Credentials */}
-            <div className="mt-8 p-4 rounded-xl bg-white/5 border border-white/10">
-              <p className="text-sm text-slate-400 text-center mb-3 font-medium">Demo Credentials</p>
-              <div className="grid gap-2 text-xs">
-                <div className="flex items-center justify-between p-2 rounded-lg bg-accent/10 border border-accent/20">
-                  <span className="text-accent">Master Admin</span>
-                  <span className="text-accent font-mono">master@loanms.com</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                  <span className="text-slate-400">Admin</span>
-                  <span className="text-slate-300 font-mono">admin@loanms.com</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                  <span className="text-slate-400">BackOffice</span>
-                  <span className="text-slate-300 font-mono">backoffice@loanms.com</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                  <span className="text-slate-400">Connector</span>
-                  <span className="text-slate-300 font-mono">connector@loanms.com</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <span className="text-emerald-400">Password</span>
-                  <span className="text-emerald-300 font-mono">password123</span>
-                </div>
-              </div>
-            </div>
 
             {/* Create Organization Link */}
             <div className="mt-6 text-center">

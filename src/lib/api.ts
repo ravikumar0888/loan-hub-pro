@@ -83,7 +83,7 @@ export const authApi = {
 export const usersApi = {
   getUsers: (params?: Record<string, any>) =>
     apiRequest<{ success: boolean; data: any[]; pagination: any }>(
-      `/users?${new URLSearchParams(params).toString()}`
+      `/users${params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
 
   getUserById: (id: string) =>
@@ -117,7 +117,7 @@ export const usersApi = {
 export const banksApi = {
   getBanks: (params?: Record<string, any>) =>
     apiRequest<{ success: boolean; data: any[]; pagination: any }>(
-      `/banks?${new URLSearchParams(params).toString()}`
+      `/banks${params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
 
   getAllBanks: () =>
@@ -148,7 +148,7 @@ export const banksApi = {
 export const dsasApi = {
   getDsas: (params?: Record<string, any>) =>
     apiRequest<{ success: boolean; data: any[]; pagination: any }>(
-      `/dsas?${new URLSearchParams(params).toString()}`
+      `/dsas${params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
 
   getAllDsas: () =>
@@ -179,7 +179,7 @@ export const dsasApi = {
 export const customersApi = {
   getCustomers: (params?: Record<string, any>) =>
     apiRequest<{ success: boolean; data: any[]; pagination: any }>(
-      `/customers?${new URLSearchParams(params).toString()}`
+      `/customers${params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
 
   getCustomerById: (id: string) =>
@@ -239,12 +239,12 @@ export const dashboardApi = {
 export const reportsApi = {
   generateReport: (params?: Record<string, any>) =>
     apiRequest<{ success: boolean; data: any[] }>(
-      `/reports?${new URLSearchParams(params).toString()}`
+      `/reports${params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
 
   getReportSummary: (params?: Record<string, any>) =>
     apiRequest<{ success: boolean; data: any }>(
-      `/reports/summary?${new URLSearchParams(params).toString()}`
+      `/reports/summary${params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
 
   exportReport: async (params?: Record<string, any>): Promise<Blob> => {

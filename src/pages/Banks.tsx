@@ -23,6 +23,16 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { banksApi } from '@/lib/api';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+
+const ITEMS_PER_PAGE = 15;
 
 export default function Banks() {
   const { toast } = useToast();
@@ -33,6 +43,7 @@ export default function Banks() {
   const [bankName, setBankName] = useState('');
   const [editBankName, setEditBankName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState('');
   const [editError, setEditError] = useState('');
 
@@ -53,6 +64,18 @@ export default function Banks() {
   const filteredBanks = banks.filter((bank: Bank) =>
     bank.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredBanks.length / ITEMS_PER_PAGE);
+  const paginatedBanks = filteredBanks.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Create bank mutation
   const createBankMutation = useMutation({
@@ -264,7 +287,7 @@ export default function Banks() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredBanks.length === 0 ? (
+              {paginatedBanks.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -274,12 +297,14 @@ export default function Banks() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredBanks.map((bank: Bank, index: number) => (
+                paginatedBanks.map((bank: Bank, index: number) => (
                   <TableRow key={bank.id} className="table-row-hover">
-                    <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                    </TableCell>
                     <TableCell className="font-medium">{bank.name}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(new Date(bank.createdAt), 'MMM dd, yyyy')}
+                      {bank.createdAt ? format(new Date(bank.createdAt), 'MMM dd, yyyy') : '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -302,6 +327,51 @@ export default function Banks() {
               )}
             </TableBody>
           </Table>
+        )}
+
+        {/* Pagination - only show if more than 15 records */}
+        {filteredBanks.length > ITEMS_PER_PAGE && (
+          <div className="p-4 border-t border-border">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    className={
+                      currentPage === 1
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    }
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(page)}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    className={
+                      currentPage === totalPages
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         )}
       </div>
 

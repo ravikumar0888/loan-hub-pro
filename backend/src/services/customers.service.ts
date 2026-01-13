@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { PAGINATION_DEFAULTS } from '../config/constants';
 import { CustomerFilterQuery } from '../types';
 import { PayoutsService } from './payouts.service';
+import { PDFService } from './pdf.service';
 
 export class CustomersService {
   private payoutsService: PayoutsService;
@@ -208,7 +209,10 @@ export class CustomersService {
         },
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [
+          { updatedAt: 'desc' },
+          { createdAt: 'desc' }
+        ],
       }),
       prisma.customer.count({ where }),
     ]);
@@ -419,6 +423,21 @@ export class CustomersService {
       }
     }
 
+    // Generate PDF for the new customer
+    try {
+      const pdfUrl = await PDFService.generateCustomerPDF(customer.id);
+      console.log(`[INFO] Generated PDF for customer ${customer.id}: ${pdfUrl}`);
+
+      // Update customer with PDF URL
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data: { pdfUrl },
+      });
+    } catch (pdfError) {
+      console.error(`[ERROR] Failed to generate PDF for customer ${customer.id}:`, pdfError);
+      // Don't fail the whole operation if PDF generation fails
+    }
+
     return this.transformCustomer(customer);
   }
 
@@ -527,15 +546,39 @@ export class CustomersService {
       },
     });
 
-    // Auto-generate payout entry if status changed to 'disbursed'
+    // Regenerate payout if subvention changed on disbursed customer
+    if (customer.status === 'disbursed' && data.subventionAmount !== undefined && data.subventionAmount !== customer.subventionAmount) {
+      try {
+        await this.payoutsService.generatePayoutForDisbursedCustomer(id);
+        console.log(`[INFO] Regenerated payout entry for customer ${id} due to subvention change`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to regenerate payout for customer ${id}:`, error);
+        // Don't fail the update if payout generation fails
+      }
+    }
+
+    // Generate payout for new disbursements
     if (data.status === 'disbursed' && customer.status !== 'disbursed') {
       try {
         await this.payoutsService.generatePayoutForDisbursedCustomer(id);
-        console.log(`[INFO] Auto-generated payout entry for customer ${id}`);
+        console.log(`[INFO] Auto-generated payout entry for newly disbursed customer ${id}`);
       } catch (error) {
         console.error(`[ERROR] Failed to auto-generate payout for customer ${id}:`, error);
         // Don't fail the update if payout generation fails
       }
+    }
+
+    // Regenerate PDF if customer details changed
+    try {
+      const pdfUrl = await PDFService.regenerateCustomerPDF(id);
+      console.log(`[INFO] Regenerated PDF for customer ${id}: ${pdfUrl}`);
+      await prisma.customer.update({
+        where: { id },
+        data: { pdfUrl }
+      });
+    } catch (pdfError) {
+      console.error(`[ERROR] Failed to regenerate PDF for customer ${id}:`, pdfError);
+      // Don't fail the update if PDF generation fails
     }
 
     return this.transformCustomer(updatedCustomer);

@@ -14,24 +14,12 @@ export class ReportsService {
     // Role-based filtering
     if (userRole === 'connector') {
       where.connectorId = userId;
-    } else if (userRole === 'admin') {
-      // Admins can only see customers from connectors they created
-      const adminConnectors = await prisma.user.findMany({
-        where: {
-          createdBy: userId,
-          role: 'connector',
-          isActive: true,
-        },
-        select: { id: true },
-      });
-
-      const connectorIds = adminConnectors.map(c => c.id);
-      if (connectorIds.length > 0) {
-        where.connectorId = { in: connectorIds };
-      } else {
-        // No connectors found, return empty result
-        where.connectorId = 'none';
-      }
+    } else if (userRole === 'admin' && userId) {
+      // Admin sees only customers where they are the lead owner
+      where.leadOwner = userId;
+    } else if (userRole === 'backoffice' && userId) {
+      // Backoffice sees only customers they created
+      where.createdBy = userId;
     }
 
     // Apply filters
@@ -172,24 +160,12 @@ export class ReportsService {
     // Role-based filtering
     if (userRole === 'connector') {
       where.connectorId = userId;
-    } else if (userRole === 'admin') {
-      // Admins can only see customers from connectors they created
-      const adminConnectors = await prisma.user.findMany({
-        where: {
-          createdBy: userId,
-          role: 'connector',
-          isActive: true,
-        },
-        select: { id: true },
-      });
-
-      const connectorIds = adminConnectors.map(c => c.id);
-      if (connectorIds.length > 0) {
-        where.connectorId = { in: connectorIds };
-      } else {
-        // No connectors found, return empty result
-        where.connectorId = 'none';
-      }
+    } else if (userRole === 'admin' && userId) {
+      // Admin sees only customers where they are the lead owner
+      where.leadOwner = userId;
+    } else if (userRole === 'backoffice' && userId) {
+      // Backoffice sees only customers they created
+      where.createdBy = userId;
     }
 
     // Apply filters

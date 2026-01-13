@@ -95,13 +95,16 @@ export class DsasService {
   }
 
   async createDsa(data: { name: string; bankDetails: any[]; organizationId?: string | null }) {
-    // Check if DSA already exists
-    const existing = await prisma.dsa.findUnique({
-      where: { name: data.name },
+    // Check if DSA already exists in this organization
+    const existing = await prisma.dsa.findFirst({
+      where: {
+        name: data.name,
+        organizationId: data.organizationId
+      },
     });
 
     if (existing) {
-      throw new Error('DSA already exists');
+      throw new Error('DSA already exists in your organization');
     }
 
     const dsa = await prisma.dsa.create({
@@ -149,13 +152,16 @@ export class DsasService {
       throw new Error('Forbidden - DSA not found in your organization');
     }
 
-    // Check name uniqueness if updating
+    // Check name uniqueness within organization if updating
     if (data.name && data.name !== dsa.name) {
-      const existing = await prisma.dsa.findUnique({
-        where: { name: data.name },
+      const existing = await prisma.dsa.findFirst({
+        where: {
+          name: data.name,
+          organizationId: dsa.organizationId
+        },
       });
       if (existing) {
-        throw new Error('DSA name already exists');
+        throw new Error('DSA name already exists in your organization');
       }
     }
 

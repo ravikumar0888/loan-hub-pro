@@ -34,7 +34,10 @@ export class BanksService {
         },
         skip,
         take: limit,
-        orderBy: { name: 'asc' },
+        orderBy: [
+          { updatedAt: 'desc' },
+          { createdAt: 'desc' }
+        ],
       }),
       prisma.bank.count({ where }),
     ]);
@@ -78,13 +81,16 @@ export class BanksService {
   }
 
   async createBank(data: { name: string; organizationId?: string | null }) {
-    // Check if bank already exists
-    const existing = await prisma.bank.findUnique({
-      where: { name: data.name },
+    // Check if bank already exists in this organization
+    const existing = await prisma.bank.findFirst({
+      where: {
+        name: data.name,
+        organizationId: data.organizationId
+      },
     });
 
     if (existing) {
-      throw new Error('Bank already exists');
+      throw new Error('Bank already exists in your organization');
     }
 
     const bank = await prisma.bank.create({
@@ -118,13 +124,16 @@ export class BanksService {
       throw new Error('Bank not found');
     }
 
-    // Check name uniqueness if updating
+    // Check name uniqueness within organization if updating
     if (data.name && data.name !== bank.name) {
-      const existing = await prisma.bank.findUnique({
-        where: { name: data.name },
+      const existing = await prisma.bank.findFirst({
+        where: {
+          name: data.name,
+          organizationId: bank.organizationId
+        },
       });
       if (existing) {
-        throw new Error('Bank name already exists');
+        throw new Error('Bank name already exists in your organization');
       }
     }
 

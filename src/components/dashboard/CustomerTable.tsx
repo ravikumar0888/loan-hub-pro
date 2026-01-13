@@ -50,7 +50,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 25;
 
   // Show payout column only for superadmin and connector users
   // Hide for: admin and backoffice (payout visible only in Reports page for admin)
