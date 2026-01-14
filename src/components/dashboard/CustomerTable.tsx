@@ -52,9 +52,21 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  // Show payout column only for superadmin and connector users
-  // Hide for: admin and backoffice (payout visible only in Reports page for admin)
-  const showPayoutColumn = role === 'superadmin' || role === 'connector';
+  // Show payout column only for superadmin
+  // Hide for: admin, backoffice, and connector (payout visible only in Reports page for admin)
+  const showPayoutColumn = role === 'superadmin';
+
+  // Hide DSA and Connector columns for connector role
+  const showDSAColumn = role !== 'connector';
+  const showConnectorColumn = role !== 'connector';
+
+  // Function to mask phone number for backoffice (show XXXXXX for first 6 digits)
+  const maskPhoneNumber = (phone: string) => {
+    if (role === 'backoffice' && phone && phone.length === 10) {
+      return 'XXXXXX' + phone.slice(6);
+    }
+    return phone;
+  };
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
@@ -113,15 +125,18 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
               <TableHead>Amount</TableHead>
               {showPayoutColumn && <TableHead>Payout</TableHead>}
               <TableHead>Status</TableHead>
-              <TableHead>DSA</TableHead>
-              <TableHead>Connector</TableHead>
+              {showDSAColumn && <TableHead>DSA</TableHead>}
+              {showConnectorColumn && <TableHead>Channel Partner</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showPayoutColumn ? 10 : 9} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={7 + (showPayoutColumn ? 1 : 0) + (showDSAColumn ? 1 : 0) + (showConnectorColumn ? 1 : 0)}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No customers found
                 </TableCell>
               </TableRow>
@@ -136,7 +151,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      <p>{customer.mobile}</p>
+                      <p>{maskPhoneNumber(customer.mobile)}</p>
                       <p className="text-muted-foreground">{customer.email}</p>
                     </div>
                   </TableCell>
@@ -166,20 +181,26 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                       {customer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {customer.dsa?.name || '-'}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
-                  </TableCell>
+                  {showDSAColumn && (
+                    <TableCell className="text-sm">
+                      {customer.dsa?.name || '-'}
+                    </TableCell>
+                  )}
+                  {showConnectorColumn && (
+                    <TableCell className="text-sm">
+                      {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="icon" onClick={() => onView?.(customer)}>
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => onEdit?.(customer)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      {role !== 'connector' && (
+                        <Button variant="ghost" size="icon" onClick={() => onEdit?.(customer)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -187,13 +187,13 @@ export default function Reports() {
           </div>
 
           <div className="space-y-2">
-            <Label>Connector</Label>
+            <Label>Channel Partner</Label>
             <Select value={selectedConnector} onValueChange={setSelectedConnector}>
               <SelectTrigger>
-                <SelectValue placeholder="All Connectors" />
+                <SelectValue placeholder="All Channel Partners" />
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border">
-                <SelectItem value="all">All Connectors</SelectItem>
+                <SelectItem value="all">All Channel Partners</SelectItem>
                 {connectors.map((connector: any) => (
                   <SelectItem key={connector.id} value={connector.id}>
                     {connector.firstName} {connector.lastName}
@@ -259,7 +259,7 @@ export default function Reports() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Payout</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Connector</TableHead>
+                  <TableHead>Channel Partner</TableHead>
                   <TableHead>Lead Owner</TableHead>
                   <TableHead>Sales Manager</TableHead>
                 </TableRow>

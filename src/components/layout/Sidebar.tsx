@@ -35,7 +35,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       roles: ['superadmin', 'admin', 'backoffice', 'connector'],
     },
     {
-      label: 'Customers',
+      label: 'Loan Application',
       icon: Users,
       path: '/customers',
       roles: ['superadmin', 'admin', 'backoffice', 'connector'],
@@ -69,12 +69,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       icon: FileText,
       path: '/reports',
       roles: ['superadmin', 'admin'],
-    },
-    {
-      label: 'Profile',
-      icon: User,
-      path: '/profile',
-      roles: ['superadmin', 'admin', 'backoffice', 'connector'],
     },
   ];
 

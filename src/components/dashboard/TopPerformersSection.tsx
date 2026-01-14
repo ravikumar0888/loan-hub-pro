@@ -244,7 +244,7 @@ export default function TopPerformersSection({
                 value="topConnector"
                 className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
               >
-                Top Connector
+                Top Channel Partner
               </TabsTrigger>
             )}
             {visibleTabs.includes('topDSA') && (

@@ -80,7 +80,7 @@ export default function LoginPage() {
   const features = [
     { icon: Shield, title: 'Secure Platform', desc: 'Bank-grade security' },
     { icon: TrendingUp, title: 'Track Progress', desc: 'Real-time analytics' },
-    { icon: Users, title: 'Multi-Role Access', desc: 'Admin, BackOffice, Connector' },
+    { icon: Users, title: 'Multi-Role Access', desc: 'Admin, BackOffice, Channel Partner' },
   ];
 
   return (

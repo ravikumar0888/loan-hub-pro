@@ -297,8 +297,8 @@ export default function Payouts() {
           {connectors.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Select Connector</CardTitle>
-                <CardDescription>Choose a connector to view their payout details</CardDescription>
+                <CardTitle>Select Channel Partner</CardTitle>
+                <CardDescription>Choose a channel partner to view their payout details</CardDescription>
               </CardHeader>
               <CardContent>
                 <Select
@@ -306,7 +306,7 @@ export default function Payouts() {
                   onValueChange={(value) => setSelectedConnector(value)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a connector" />
+                    <SelectValue placeholder="Select a channel partner" />
                   </SelectTrigger>
                   <SelectContent>
                     {connectors.map((connector) => (
@@ -527,7 +527,7 @@ export default function Payouts() {
       {selectedConnector && monthlyData.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No payout history found for this connector
+            No payout history found for this channel partner
           </CardContent>
         </Card>
       )}
@@ -538,12 +538,12 @@ export default function Payouts() {
           <DialogHeader>
             <DialogTitle>Add Ledger Entry</DialogTitle>
             <DialogDescription>
-              Add a payout (credit) or advance (debit) entry for a connector
+              Add a payout (credit) or advance (debit) entry for a channel partner
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="connector">Connector *</Label>
+              <Label htmlFor="connector">Channel Partner *</Label>
               <Select
                 value={formData.connectorId}
                 onValueChange={(value) =>
@@ -551,7 +551,7 @@ export default function Payouts() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select connector" />
+                  <SelectValue placeholder="Select channel partner" />
                 </SelectTrigger>
                 <SelectContent>
                   {connectors.map((connector) => (

@@ -193,7 +193,7 @@ export default function CustomerFormDialog({
     if (!formData.name.trim()) newErrors.name = 'Client name is required';
     if (!formData.mobile.match(/^\d{10}$/)) newErrors.mobile = 'Valid 10-digit mobile required';
     if (!formData.loanAmount || Number(formData.loanAmount) <= 0) newErrors.loanAmount = 'Valid loan amount required';
-    if (!formData.connectorId) newErrors.connectorId = 'Connector is required';
+    if (!formData.connectorId) newErrors.connectorId = 'Channel Partner is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -636,7 +636,7 @@ export default function CustomerFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label>Connector *</Label>
+                <Label>Channel Partner *</Label>
                 {isReadOnly ? (
                   <div className="p-2 bg-muted rounded-md text-sm">
                     {connectors.find(c => c.id === formData.connectorId)
@@ -649,7 +649,7 @@ export default function CustomerFormDialog({
                     onValueChange={(value) => setFormData({ ...formData, connectorId: value })}
                   >
                     <SelectTrigger className={errors.connectorId ? 'border-destructive' : ''}>
-                      <SelectValue placeholder="Select connector" />
+                      <SelectValue placeholder="Select channel partner" />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border">
                       {connectors.map((connector) => (

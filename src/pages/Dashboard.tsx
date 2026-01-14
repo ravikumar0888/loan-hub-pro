@@ -28,13 +28,13 @@ export default function Dashboard() {
   const currentYear = new Date().getFullYear();
 
   // Fetch KPI data from backend with date range
+  // Backend automatically filters by role using authentication middleware
   const { data: kpiData, isLoading: isLoadingKPI } = useQuery({
-    queryKey: ['dashboard-kpis', dateRange, user?.id],
+    queryKey: ['dashboard-kpis', dateRange, role],
     queryFn: async () => {
       const params: any = {};
       if (dateRange.from) params.startDate = dateRange.from.toISOString();
       if (dateRange.to) params.endDate = dateRange.to.toISOString();
-      if (role === 'connector' && user?.id) params.connectorId = user.id;
 
       const response = await dashboardApi.getKPIs(params);
       return response.data;

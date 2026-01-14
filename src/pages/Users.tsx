@@ -403,10 +403,10 @@ export default function Users() {
                       <SelectValue placeholder="Select user type" />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border">
-                      {/* Admins can only create Connector and BackOffice users */}
+                      {/* Admins can only create Channel Partner and BackOffice users */}
                       {currentUserRole !== 'admin' && <SelectItem value="admin">Admin</SelectItem>}
                       <SelectItem value="backoffice">BackOffice</SelectItem>
-                      <SelectItem value="connector">Connector</SelectItem>
+                      <SelectItem value="connector">Channel Partner</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}

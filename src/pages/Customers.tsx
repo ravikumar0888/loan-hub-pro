@@ -125,7 +125,7 @@ export default function Customers() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Customer Management</h2>
+          <h2 className="text-2xl font-bold text-foreground">Lead Management</h2>
           <p className="text-muted-foreground">Manage and track all customer applications</p>
         </div>
         {canAddCustomer && (
