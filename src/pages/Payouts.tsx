@@ -280,7 +280,7 @@ export default function Payouts() {
           <p className="text-muted-foreground">
             {role === 'connector'
               ? 'View your payout balance and history'
-              : 'Manage connector payouts and advances'}
+              : 'Manage Channel Partner payouts and advances'}
           </p>
         </div>
         {(role === 'superadmin' || role === 'admin') && (

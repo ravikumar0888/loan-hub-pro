@@ -179,6 +179,10 @@ export const createCustomerSchema = z.object({
   salesManager: z.string().optional(),
   status: z.enum(['login', 'rejected', 'approved', 'disbursed', 'hold', 'relook', 'drop']).default('login'),
   remarks: z.string().optional(),
+  qualification: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
+  tenure: z.string().optional(),
+  companyAddress: z.string().optional(),
 });
 
 export const updateCustomerSchema = z.object({
@@ -193,6 +197,10 @@ export const updateCustomerSchema = z.object({
   leadOwner: z.string().optional(),
   salesManager: z.string().optional(),
   status: z.enum(['login', 'rejected', 'approved', 'disbursed', 'hold', 'relook', 'drop']).optional(),
+  qualification: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
+  tenure: z.string().optional(),
+  companyAddress: z.string().optional(),
 });
 
 export const addRemarkSchema = z.object({

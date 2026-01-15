@@ -462,3 +462,24 @@ export const profileApi = {
       method: 'DELETE',
     }),
 };
+
+// Notifications API
+export const notificationsApi = {
+  getNotifications: (params?: { limit?: number; onlyUnread?: boolean }) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/notifications${params ? `?${new URLSearchParams(params as any).toString()}` : ''}`
+    ),
+
+  getUnreadCount: () =>
+    apiRequest<{ success: boolean; data: { count: number } }>('/notifications/unread-count'),
+
+  markAsRead: (id: string) =>
+    apiRequest<{ success: boolean; message: string }>(`/notifications/${id}/read`, {
+      method: 'PUT',
+    }),
+
+  markAllAsRead: () =>
+    apiRequest<{ success: boolean; message: string }>('/notifications/mark-all-read', {
+      method: 'PUT',
+    }),
+};

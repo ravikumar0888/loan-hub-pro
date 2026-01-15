@@ -8,6 +8,8 @@ export type HomeType = 'own' | 'rental' | 'self-occupied';
 
 export type CaseType = 'fresh' | 'bt' | 'bt_topup';
 
+export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed';
+
 // Pricing Tiers
 export type PricingTier = 'starter' | 'professional' | 'enterprise';
 
@@ -130,6 +132,8 @@ export interface Customer {
   panNo?: string;
   aadharNo?: string;
   dateOfBirth?: Date;
+  qualification?: string;
+  maritalStatus?: MaritalStatus;
   // Professional Details
   currentCompany?: string;
   currentCompanyExperience?: string;

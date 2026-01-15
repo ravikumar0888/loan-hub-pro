@@ -91,6 +91,7 @@ model User {
   users                                       User?                @relation("usersTousers", fields: [createdBy], references: [id])
   other_users                                 User[]               @relation("usersTousers")
   organization                                Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  notifications                               Notification[]
 
   @@index([email])
   @@index([role])
@@ -140,6 +141,10 @@ model Customer {
   reference2Name      String?          @map("reference2_name") @db.VarChar(255)
   spouseName          String?          @map("spouse_name") @db.VarChar(255)
   totalWorkExperience String?          @map("total_work_experience") @db.VarChar(50)
+  qualification       String?          @map("qualification") @db.VarChar(100)
+  maritalStatus       String?          @map("marital_status") @db.VarChar(20)
+  tenure              String?          @map("tenure") @db.VarChar(50)
+  companyAddress      String?          @map("company_address")
   organizationId      String?          @map("organization_id")
   location            String?          @map("location") @db.VarChar(255)
   subventionAmount    Decimal?         @map("subvention_amount") @db.Decimal(15, 2)
@@ -326,6 +331,24 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+model Notification {
+  id             String           @id @default(uuid())
+  type           NotificationType
+  title          String           @db.VarChar(255)
+  message        String
+  userId         String           @map("user_id")
+  customerId     String?          @map("customer_id")
+  isRead         Boolean          @default(false) @map("is_read")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  organizationId String?          @map("organization_id")
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([organizationId])
+  @@map("notifications")
+}
+
 enum UserRole {
   superadmin
   admin
@@ -374,4 +397,10 @@ enum CaseType {
   fresh
   bt
   bt_topup
+}
+
+enum NotificationType {
+  new_lead
+  remark_added
+  status_change
 }

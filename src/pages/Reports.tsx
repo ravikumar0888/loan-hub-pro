@@ -163,7 +163,7 @@ export default function Reports() {
           Filters
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div className="space-y-2">
             <Label>Date Range</Label>
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
@@ -172,7 +172,7 @@ export default function Reports() {
           <div className="space-y-2">
             <Label>DSA</Label>
             <Select value={selectedDSA} onValueChange={setSelectedDSA}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder="All DSAs" />
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border">
@@ -189,7 +189,7 @@ export default function Reports() {
           <div className="space-y-2">
             <Label>Channel Partner</Label>
             <Select value={selectedConnector} onValueChange={setSelectedConnector}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder="All Channel Partners" />
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border">
@@ -203,8 +203,8 @@ export default function Reports() {
             </Select>
           </div>
 
-          <div className="flex items-end">
-            <Button variant="outline" onClick={handleReset} className="w-full">
+          <div>
+            <Button variant="outline" onClick={handleReset} className="w-full h-10">
               <RefreshCw className="w-4 h-4 mr-2" />
               Reset Filters
             </Button>
@@ -221,19 +221,19 @@ export default function Reports() {
         <div className="bg-card rounded-xl p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Total Loan Amount</p>
           <p className="text-3xl font-bold text-foreground mt-1">
-            ₹{totalAmount.toLocaleString()}
+            ₹{totalAmount.toLocaleString('en-IN')}
           </p>
         </div>
         <div className="bg-card rounded-xl p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Disbursed Amount</p>
           <p className="text-3xl font-bold text-success mt-1">
-            ₹{disbursedAmount.toLocaleString()}
+            ₹{disbursedAmount.toLocaleString('en-IN')}
           </p>
         </div>
         <div className="bg-card rounded-xl p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Total Payout</p>
           <p className="text-3xl font-bold text-accent mt-1">
-            ₹{totalPayout.toLocaleString()}
+            ₹{totalPayout.toLocaleString('en-IN')}
           </p>
         </div>
       </div>
@@ -255,7 +255,6 @@ export default function Reports() {
                   <TableHead>Date</TableHead>
                   <TableHead>Application ID</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Contact</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Loan Type</TableHead>
                   <TableHead>Amount</TableHead>
@@ -287,7 +286,9 @@ export default function Reports() {
                       <TableCell>
                         <div className="text-sm">
                           <p>{customer.mobile}</p>
-                          <p className="text-muted-foreground">{customer.email || '-'}</p>
+                          {customer.email && (
+                            <p className="text-muted-foreground">{customer.email}</p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
@@ -297,11 +298,11 @@ export default function Reports() {
                         <Badge variant="outline">{customer.loanType}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ₹{Number(customer.loanAmount).toLocaleString()}
+                        ₹{Number(customer.loanAmount).toLocaleString('en-IN')}
                       </TableCell>
                       <TableCell className="font-medium text-accent">
                         {customer.status === 'disbursed' && customer.connectorPayout > 0
-                          ? `₹${Number(customer.connectorPayout).toLocaleString()}`
+                          ? `₹${Number(customer.connectorPayout).toLocaleString('en-IN')}`
                           : '-'}
                       </TableCell>
                       <TableCell>

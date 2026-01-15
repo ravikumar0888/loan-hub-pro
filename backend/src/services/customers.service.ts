@@ -3,12 +3,15 @@ import { PAGINATION_DEFAULTS } from '../config/constants';
 import { CustomerFilterQuery } from '../types';
 import { PayoutsService } from './payouts.service';
 import { PDFService } from './pdf.service';
+import { NotificationsService } from './notifications.service';
 
 export class CustomersService {
   private payoutsService: PayoutsService;
+  private notificationsService: NotificationsService;
 
   constructor() {
     this.payoutsService = new PayoutsService();
+    this.notificationsService = new NotificationsService();
   }
   // Transform database customer format to frontend format
   private transformCustomer(customer: any) {
@@ -138,8 +141,13 @@ export class CustomersService {
           spouseName: true,
           panNo: true,
           date_of_birth: true,
+          currentCompany: true,
           current_company_exp: true,
           totalWorkExperience: true,
+          qualification: true,
+          maritalStatus: true,
+          tenure: true,
+          companyAddress: true,
           currentAddress: true,
           postalAddress: true,
           homeType: true,
@@ -356,6 +364,10 @@ export class CustomersService {
         currentCompany: data.currentCompany,
         current_company_exp: data.currentCompanyExp,
         totalWorkExperience: data.totalWorkExperience,
+        qualification: data.qualification,
+        maritalStatus: data.maritalStatus,
+        tenure: data.tenure,
+        companyAddress: data.companyAddress,
         currentAddress: data.currentAddress,
         postalAddress: data.postalAddress,
         homeType: data.homeType,
@@ -422,6 +434,30 @@ export class CustomersService {
       } catch (error) {
         console.error(`[ERROR] Failed to auto-generate payout for customer ${customer.id}:`, error);
         // Don't fail the create if payout generation fails
+      }
+    }
+
+    // Send notification for new lead (backoffice or anyone creating a lead)
+    if (organizationId && customer.createdBy) {
+      try {
+        // Get creator name
+        const creator = await prisma.user.findUnique({
+          where: { id: customer.createdBy },
+          select: { firstName: true, lastName: true },
+        });
+        const creatorName = creator ? `${creator.firstName} ${creator.lastName}` : 'Someone';
+
+        await this.notificationsService.notifyNewLead(
+          customer.name,
+          creatorName,
+          organizationId,
+          customer.id,
+          customer.connectorId || undefined
+        );
+        console.log(`[INFO] Sent new lead notification for customer ${customer.id}`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to send new lead notification for customer ${customer.id}:`, error);
+        // Don't fail the create if notification fails
       }
     }
 
@@ -502,6 +538,10 @@ export class CustomersService {
     if (data.currentCompany !== undefined) updateData.currentCompany = data.currentCompany;
     if (data.currentCompanyExp !== undefined) updateData.current_company_exp = data.currentCompanyExp;
     if (data.totalWorkExperience !== undefined) updateData.totalWorkExperience = data.totalWorkExperience;
+    if (data.qualification !== undefined) updateData.qualification = data.qualification;
+    if (data.maritalStatus !== undefined) updateData.maritalStatus = data.maritalStatus;
+    if (data.tenure !== undefined) updateData.tenure = data.tenure;
+    if (data.companyAddress !== undefined) updateData.companyAddress = data.companyAddress;
     if (data.currentAddress !== undefined) updateData.currentAddress = data.currentAddress;
     if (data.postalAddress !== undefined) updateData.postalAddress = data.postalAddress;
     if (data.homeType !== undefined) updateData.homeType = data.homeType;
@@ -525,6 +565,44 @@ export class CustomersService {
     if (data.leadOwner !== undefined) updateData.leadOwner = data.leadOwner;
     if (data.salesManager !== undefined) updateData.salesManager = data.salesManager;
     if (data.status) updateData.status = data.status;
+
+    // Handle remarks - create new remark if provided
+    if (data.remarks && data.remarks.trim()) {
+      await prisma.customerRemark.create({
+        data: {
+          customerId: id,
+          remark: data.remarks.trim(),
+          created_by: userId,
+        },
+      });
+
+      // Send notification for remark added
+      // Notifies: Channel Partner (connector), Lead Owner, and Superadmins
+      if (organizationId && userId) {
+        try {
+          const updater = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { firstName: true, lastName: true },
+          });
+          const updaterName = updater ? `${updater.firstName} ${updater.lastName}` : 'Someone';
+
+          await this.notificationsService.notifyRemarkAdded(
+            customer.name,
+            updaterName,
+            data.remarks.trim(),
+            organizationId,
+            id,
+            customer.connectorId || undefined,
+            customer.leadOwner || undefined, // Lead Owner (admin)
+            userId // Exclude the user who added the remark
+          );
+          console.log(`[INFO] Sent remark notification for customer ${id}`);
+        } catch (error) {
+          console.error(`[ERROR] Failed to send remark notification for customer ${id}:`, error);
+          // Don't fail the update if notification fails
+        }
+      }
+    }
 
     const updatedCustomer = await prisma.customer.update({
       where: { id },
@@ -582,6 +660,23 @@ export class CustomersService {
       } catch (error) {
         console.error(`[ERROR] Failed to auto-generate payout for customer ${id}:`, error);
         // Don't fail the update if payout generation fails
+      }
+    }
+
+    // Remove payout entry when status changes FROM 'disbursed' to any other status
+    if (customer.status === 'disbursed' && data.status && data.status !== 'disbursed') {
+      try {
+        // Delete the payout ledger entry for this customer
+        await prisma.payoutLedger.deleteMany({
+          where: {
+            customerId: id,
+            entry_type: 'credit',
+          },
+        });
+        console.log(`[INFO] Removed payout entry for customer ${id} due to status change from disbursed to ${data.status}`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to remove payout entry for customer ${id}:`, error);
+        // Don't fail the update if payout removal fails
       }
     }
 
@@ -666,7 +761,7 @@ export class CustomersService {
       data: {
         customerId,
         remark,
-        createdBy,
+        created_by: createdBy,
       },
       include: {
         users: {
@@ -677,6 +772,33 @@ export class CustomersService {
         },
       },
     });
+
+    // Send notification for remark added
+    // Notifies: Channel Partner (connector), Lead Owner, and Superadmins
+    if (organizationId && createdBy) {
+      try {
+        const creator = await prisma.user.findUnique({
+          where: { id: createdBy },
+          select: { firstName: true, lastName: true },
+        });
+        const creatorName = creator ? `${creator.firstName} ${creator.lastName}` : 'Someone';
+
+        await this.notificationsService.notifyRemarkAdded(
+          customer.name,
+          creatorName,
+          remark,
+          organizationId,
+          customerId,
+          customer.connectorId || undefined,
+          customer.leadOwner || undefined, // Lead Owner (admin)
+          createdBy // Exclude the user who added the remark
+        );
+        console.log(`[INFO] Sent remark notification for customer ${customerId}`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to send remark notification for customer ${customerId}:`, error);
+        // Don't fail if notification fails
+      }
+    }
 
     return newRemark;
   }

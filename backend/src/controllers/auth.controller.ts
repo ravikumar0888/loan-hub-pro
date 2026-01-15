@@ -85,6 +85,7 @@ export class AuthController {
             mobile: user.mobile,
             role: user.role,
             profilePhoto: user.profilePhoto,
+            companyName: user.companyName,
             organizationId: user.organizationId,
             organization: user.organization ? {
               id: user.organization.id,
@@ -148,6 +149,7 @@ export class AuthController {
           mobile: user.mobile,
           role: user.role,
           profilePhoto: user.profilePhoto,
+          companyName: user.companyName,
           organizationId: user.organizationId,
           organization: user.organization,
         },

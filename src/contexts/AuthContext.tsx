@@ -7,6 +7,8 @@ interface AuthContextType extends AuthState {
   logout: () => void;
   forgotPassword: (email: string) => Promise<boolean>;
   resetPassword: (password: string) => Promise<boolean>;
+  refreshUser: () => Promise<void>;
+  displayName: string | null; // Company name for admin (if set), or organization name
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -99,6 +101,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Refresh user data from API
+  const refreshUser = useCallback(async () => {
+    try {
+      const response = await authApi.getCurrentUser();
+      if (response.success && response.data) {
+        setAuthState({
+          user: response.data,
+          isAuthenticated: true,
+          role: response.data.role,
+        });
+      }
+    } catch (error) {
+      console.error('Refresh user error:', error);
+    }
+  }, []);
+
+  // Compute display name based on role
+  // For admin: use companyName if set, otherwise organization name
+  // For others: use organization name
+  const displayName = React.useMemo(() => {
+    if (!authState.user) return null;
+    const userData = authState.user as any;
+
+    // For admin role, prefer companyName if set
+    if (authState.role === 'admin' && userData.companyName) {
+      return userData.companyName;
+    }
+
+    // For all roles (including admin without companyName), use organization name
+    if (userData.organization?.name) {
+      return userData.organization.name;
+    }
+
+    return null;
+  }, [authState.user, authState.role]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -118,6 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         forgotPassword,
         resetPassword,
+        refreshUser,
+        displayName,
       }}
     >
       {children}
