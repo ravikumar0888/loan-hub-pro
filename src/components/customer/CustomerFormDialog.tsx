@@ -285,7 +285,7 @@ export default function CustomerFormDialog({
     label: string,
     value: string,
     onChange: (value: string) => void,
-    options?: { required?: boolean; type?: string; placeholder?: string; error?: string }
+    options?: { required?: boolean; type?: string; placeholder?: string; error?: string; maxLength?: number }
   ) => (
     <div className="space-y-2">
       <Label htmlFor={id}>
@@ -301,6 +301,7 @@ export default function CustomerFormDialog({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={options?.placeholder}
+            maxLength={options?.maxLength}
             error={!!options?.error}
           />
           {options?.error && <p className="text-sm text-destructive">{options.error}</p>}
@@ -403,6 +404,7 @@ export default function CustomerFormDialog({
               {renderField('mobile', 'Mobile Number', formData.mobile, (v) => setFormData({ ...formData, mobile: v }), {
                 required: true,
                 placeholder: '10 digit mobile',
+                maxLength: 10,
                 error: errors.mobile,
               })}
 
@@ -496,7 +498,7 @@ export default function CustomerFormDialog({
                 <h4 className="font-medium text-foreground">Reference 1</h4>
                 <div className="grid grid-cols-1 gap-4">
                   {renderField('reference1Name', 'Name', formData.reference1Name, (v) => setFormData({ ...formData, reference1Name: v }))}
-                  {renderField('reference1Mobile', 'Mobile Number', formData.reference1Mobile, (v) => setFormData({ ...formData, reference1Mobile: v }))}
+                  {renderField('reference1Mobile', 'Mobile Number', formData.reference1Mobile, (v) => setFormData({ ...formData, reference1Mobile: v }), { maxLength: 10 })}
                   {renderField('reference1Address', 'Address', formData.reference1Address, (v) => setFormData({ ...formData, reference1Address: v }))}
                 </div>
               </div>
@@ -506,7 +508,7 @@ export default function CustomerFormDialog({
                 <h4 className="font-medium text-foreground">Reference 2</h4>
                 <div className="grid grid-cols-1 gap-4">
                   {renderField('reference2Name', 'Name', formData.reference2Name, (v) => setFormData({ ...formData, reference2Name: v }))}
-                  {renderField('reference2Mobile', 'Mobile Number', formData.reference2Mobile, (v) => setFormData({ ...formData, reference2Mobile: v }))}
+                  {renderField('reference2Mobile', 'Mobile Number', formData.reference2Mobile, (v) => setFormData({ ...formData, reference2Mobile: v }), { maxLength: 10 })}
                   {renderField('reference2Address', 'Address', formData.reference2Address, (v) => setFormData({ ...formData, reference2Address: v }))}
                 </div>
               </div>

@@ -363,6 +363,7 @@ export default function Users() {
                     value={formData.mobile}
                     onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
                     placeholder="10 digit mobile"
+                    maxLength={10}
                     error={!!errors.mobile}
                   />
                   {errors.mobile && <p className="text-sm text-destructive">{errors.mobile}</p>}

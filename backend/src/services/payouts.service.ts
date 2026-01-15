@@ -463,13 +463,19 @@ export class PayoutsService {
       },
     });
 
+    // Build description
+    let description = `Payout - ${customer.loanType} - ${customer.bank?.name || 'N/A'}`;
+    if (customer.subventionAmount && Number(customer.subventionAmount) > 0) {
+      description += ` (Subvention: ₹${Number(customer.subventionAmount).toLocaleString('en-IN')})`;
+    }
+
     if (existingEntry) {
       // Update existing entry if payout amount or description changed
       const updatedEntry = await prisma.payoutLedger.update({
         where: { id: existingEntry.id },
         data: {
           amount: new Prisma.Decimal(payout),
-          description: `Payout for customer ${customer.name} - ${customer.loanType} - ${customer.bank?.name || 'N/A'}`,
+          description,
           connectorId: customer.connectorId, // Update in case connector was changed
         },
       });
@@ -483,7 +489,7 @@ export class PayoutsService {
         customerId: customer.id,
         entry_type: 'credit',
         amount: new Prisma.Decimal(payout),
-        description: `Payout for customer ${customer.name} - ${customer.loanType} - ${customer.bank?.name || 'N/A'}`,
+        description,
         month,
         year,
       },
@@ -736,22 +742,22 @@ export class PayoutsService {
     // Store PDF record in database
     const pdfRecord = await prisma.payoutPDF.upsert({
       where: {
-        connectorId_month_year: {
-          connectorId,
+        connector_id_month_year: {
+          connector_id: connectorId,
           month,
           year,
         },
       },
       update: {
         pdfUrl,
-        generatedBy: userId!,
+        generated_by: userId!,
       },
       create: {
-        connectorId,
+        connector_id: connectorId,
         month,
         year,
         pdfUrl,
-        generatedBy: userId!,
+        generated_by: userId!,
       },
     });
 

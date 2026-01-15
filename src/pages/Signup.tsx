@@ -352,6 +352,7 @@ export default function SignupPage() {
                       value={formData.mobile}
                       onChange={e => setFormData({ ...formData, mobile: e.target.value })}
                       placeholder="9876543210"
+                      maxLength={10}
                       className="bg-slate-700/50 border-slate-600 text-white"
                     />
                     {errors.mobile && <p className="text-xs text-destructive">{errors.mobile}</p>}

@@ -27,6 +27,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { role, logout, user } = useAuth();
   const location = useLocation();
 
+  // Map role to display name
+  const getRoleDisplayName = (role: string | undefined) => {
+    if (role === 'connector') return 'Channel Partner';
+    if (role === 'backoffice') return 'Back Office';
+    return role?.replace(/^\w/, (c) => c.toUpperCase()) || '';
+  };
+
   const menuItems = [
     {
       label: 'Dashboard',
@@ -109,7 +116,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="text-xs text-sidebar-foreground/60 capitalize">{role}</p>
+              <p className="text-xs text-sidebar-foreground/60">{getRoleDisplayName(role)}</p>
             </div>
           </div>
         </div>

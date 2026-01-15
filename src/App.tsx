@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { BillingProvider } from "@/contexts/BillingContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -169,19 +170,21 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <OrganizationProvider>
-            <BillingProvider>
-              <AppRoutes />
-            </BillingProvider>
-          </OrganizationProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <OrganizationProvider>
+              <BillingProvider>
+                <AppRoutes />
+              </BillingProvider>
+            </OrganizationProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

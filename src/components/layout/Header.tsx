@@ -22,6 +22,13 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
 
+  // Map role to display name
+  const getRoleDisplayName = (role: string | undefined) => {
+    if (role === 'connector') return 'Channel Partner';
+    if (role === 'backoffice') return 'Back Office';
+    return role?.replace(/^\w/, (c) => c.toUpperCase()) || '';
+  };
+
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-30">
       <div className="flex items-center gap-4">
@@ -64,7 +71,7 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
                 <p className="text-sm font-medium text-foreground">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="text-xs text-muted-foreground capitalize">{role}</p>
+                <p className="text-xs text-muted-foreground">{getRoleDisplayName(role)}</p>
               </div>
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </Button>

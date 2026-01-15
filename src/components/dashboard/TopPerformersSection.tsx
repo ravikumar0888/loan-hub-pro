@@ -160,10 +160,10 @@ export default function TopPerformersSection({
             {paginatedData.map((item, index) => (
               <TableRow
                 key={index}
-                className="hover:bg-gray-50 transition-colors"
+                className="table-row-hover"
               >
                 <TableCell>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-semibold">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold">
                     {startRank + index + 1}
                   </div>
                 </TableCell>
@@ -171,7 +171,7 @@ export default function TopPerformersSection({
                 <TableCell className="text-center">
                   {item.count} {item.count === 1 ? 'loan' : 'loans'}
                 </TableCell>
-                <TableCell className="text-right font-semibold text-green-600">
+                <TableCell className="text-right font-semibold text-success">
                   {formatCurrency(item.totalDisbursement)}
                 </TableCell>
               </TableRow>

@@ -402,6 +402,7 @@ export default function OrganizationsTab() {
                   value={formData.mobile}
                   onChange={e => setFormData({ ...formData, mobile: e.target.value })}
                   placeholder="9876543210"
+                  maxLength={10}
                 />
               </div>
 

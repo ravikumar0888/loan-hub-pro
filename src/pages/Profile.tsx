@@ -298,6 +298,7 @@ export default function Profile() {
                   id="mobile"
                   value={formData.mobile || ''}
                   onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                  maxLength={10}
                   required
                 />
               </div>

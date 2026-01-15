@@ -212,51 +212,60 @@ export class ReportsService {
   exportToCSV(customers: any[]): string {
     const headers = [
       'Date',
+      'Application Number',
       'Customer Name',
       'Mobile',
-      'Email',
       'Loan Type',
-      'Loan Amount',
-      'Subvention',
-      'Bank',
+      'Location',
+      'Bank & NBFC Name',
       'DSA',
       'Connector',
       'Lead Owner',
       'Sales Manager',
       'Status',
+      'Loan Amount',
       'DSA Payout',
       'TDS (2%)',
       'NetPay',
+      'Subvention',
       'Connector Payout',
       'Net Revenue',
-      'Latest Remark',
     ];
 
-    const rows = customers.map((customer) => [
-      customer.applicationDate,
-      customer.name,
-      customer.mobile,
-      customer.email || '',
-      customer.loanType,
-      customer.loanAmount || 0,
-      customer.subventionAmount || 0,
-      customer.bank?.name || '',
-      customer.dsa?.name || '',
-      customer.connector
-        ? `${customer.connector.firstName} ${customer.connector.lastName}`
-        : '',
-      customer.leadOwnerName || '',
-      customer.salesManagerName || '',
-      customer.status,
-      customer.dsaPayout?.toFixed(2) || '0.00',
-      customer.tds?.toFixed(2) || '0.00',
-      customer.netPay?.toFixed(2) || '0.00',
-      customer.connectorPayout?.toFixed(2) || '0.00',
-      customer.netRevenue?.toFixed(2) || '0.00',
-      customer.remarks && customer.remarks.length > 0
-        ? customer.remarks[0].remark
-        : '',
-    ]);
+    const rows = customers.map((customer) => {
+      // Format date without timezone information
+      const dateStr = customer.applicationDate
+        ? new Date(customer.applicationDate).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          })
+        : '';
+
+      return [
+        dateStr,
+        customer.applicationId || '',
+        customer.name,
+        customer.mobile,
+        customer.loanType,
+        customer.location || '',
+        customer.bank?.name || '',
+        customer.dsa?.name || '',
+        customer.connector
+          ? `${customer.connector.firstName} ${customer.connector.lastName}`
+          : '',
+        customer.leadOwnerName || '',
+        customer.salesManagerName || '',
+        customer.status,
+        customer.loanAmount || 0,
+        customer.dsaPayout?.toFixed(2) || '0.00',
+        customer.tds?.toFixed(2) || '0.00',
+        customer.netPay?.toFixed(2) || '0.00',
+        customer.subventionAmount || 0,
+        customer.connectorPayout?.toFixed(2) || '0.00',
+        customer.netRevenue?.toFixed(2) || '0.00',
+      ];
+    });
 
     const csvContent = [headers, ...rows]
       .map((row) => row.map((cell) => `"${cell}"`).join(','))

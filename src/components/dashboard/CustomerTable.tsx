@@ -119,8 +119,10 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>Date</TableHead>
+              <TableHead>Application ID</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead>Location</TableHead>
               <TableHead>Loan Type</TableHead>
               <TableHead>Amount</TableHead>
               {showPayoutColumn && <TableHead>Payout</TableHead>}
@@ -134,7 +136,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
             {paginatedCustomers.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7 + (showPayoutColumn ? 1 : 0) + (showDSAColumn ? 1 : 0) + (showConnectorColumn ? 1 : 0)}
+                  colSpan={9 + (showPayoutColumn ? 1 : 0) + (showDSAColumn ? 1 : 0) + (showConnectorColumn ? 1 : 0)}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No customers found
@@ -146,6 +148,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                   <TableCell className="text-sm">
                     {format(new Date(customer.applicationDate || customer.date || customer.createdAt), 'MMM dd, yyyy')}
                   </TableCell>
+                  <TableCell className="text-sm font-medium">
+                    {customer.applicationId || '-'}
+                  </TableCell>
                   <TableCell>
                     <div className="font-medium text-foreground">{customer.name}</div>
                   </TableCell>
@@ -154,6 +159,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                       <p>{maskPhoneNumber(customer.mobile)}</p>
                       <p className="text-muted-foreground">{customer.email}</p>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {customer.location || '-'}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="font-medium">

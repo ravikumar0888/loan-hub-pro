@@ -253,8 +253,10 @@ export default function Reports() {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Date</TableHead>
+                  <TableHead>Application ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Contact</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Loan Type</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Payout</TableHead>
@@ -267,7 +269,7 @@ export default function Reports() {
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-12">
+                    <TableCell colSpan={12} className="text-center py-12">
                       <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                       <p className="text-muted-foreground">No data found for selected filters</p>
                     </TableCell>
@@ -278,12 +280,18 @@ export default function Reports() {
                       <TableCell className="text-sm">
                         {format(new Date(customer.applicationDate || customer.date || customer.createdAt), 'MMM dd, yyyy')}
                       </TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {customer.applicationId || '-'}
+                      </TableCell>
                       <TableCell className="font-medium">{customer.name}</TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <p>{customer.mobile}</p>
                           <p className="text-muted-foreground">{customer.email || '-'}</p>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {customer.location || '-'}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{customer.loanType}</Badge>

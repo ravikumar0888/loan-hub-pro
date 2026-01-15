@@ -32,7 +32,7 @@ interface MonthlyPayoutData {
   balance: number;
   entries: Array<{
     id: string;
-    entryType: string;
+    entry_type: string;
     amount: number;
     description: string;
     createdAt: Date;
@@ -121,7 +121,7 @@ export class PayoutPDFGenerator {
           .fillColor(textColor)
           .fontSize(10)
           .font('Helvetica-Bold')
-          .text('CONNECTOR DETAILS', 60, boxY + 10);
+          .text('CHANNEL PARTNER DETAILS', 60, boxY + 10);
 
         doc
           .font('Helvetica')
@@ -238,8 +238,8 @@ export class PayoutPDFGenerator {
             .rect(50, currentY, doc.page.width - 100, 25)
             .fillAndStroke(rowColor, borderColor);
 
-          const credit = entry.entryType === 'credit' ? entry.amount : 0;
-          const debit = entry.entryType === 'debit' ? entry.amount : 0;
+          const credit = entry.entry_type === 'credit' ? entry.amount : 0;
+          const debit = entry.entry_type === 'debit' ? entry.amount : 0;
           runningBalance += credit - debit;
 
           doc

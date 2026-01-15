@@ -323,8 +323,8 @@ export default function Payouts() {
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground mb-4">
                   {role === 'admin'
-                    ? 'No connectors found. Create connector users first to manage their payouts.'
-                    : 'No connectors in your organization. Create connector users first.'}
+                    ? 'No channel partners found. Create channel partner users first to manage their payouts.'
+                    : 'No channel partners in your organization. Create channel partner users first.'}
                 </p>
               </CardContent>
             </Card>
