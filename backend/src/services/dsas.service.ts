@@ -238,6 +238,12 @@ export class DsasService {
       select: {
         id: true,
         name: true,
+        bankDetails: {
+          select: {
+            bankId: true,
+            loanType: true,
+          },
+        },
       },
       orderBy: { name: 'asc' },
     });

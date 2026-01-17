@@ -141,6 +141,20 @@ export default function CustomerFormDialog({
   const canAddRemark = role === 'superadmin' || role === 'admin' || role === 'backoffice';
   const showDSAField = (role as string) !== 'connector';
 
+  // Filter banks based on selected DSA's bank details
+  const filteredBanks = React.useMemo(() => {
+    if (!formData.dsaId) {
+      return banks; // Show all banks if no DSA selected
+    }
+    const selectedDsa = dsas.find((d: any) => d.id === formData.dsaId);
+    if (!selectedDsa?.bankDetails || selectedDsa.bankDetails.length === 0) {
+      return banks; // Show all banks if DSA has no bank details
+    }
+    // Get bank IDs from DSA's bank details
+    const dsaBankIds = selectedDsa.bankDetails.map((bd: any) => bd.bankId);
+    return banks.filter((bank: any) => dsaBankIds.includes(bank.id));
+  }, [formData.dsaId, dsas, banks]);
+
 
   useEffect(() => {
     if (customer && (mode === 'edit' || mode === 'view')) {
@@ -386,27 +400,9 @@ export default function CustomerFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>
-              {mode === 'add' ? 'Add New Lead' : mode === 'edit' ? 'Edit Lead' : 'View Lead'}
-            </DialogTitle>
-            {formData.pdfUrl && (role as string) !== 'connector' && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const pdfUrl = formData.pdfUrl.startsWith('http')
-                    ? formData.pdfUrl
-                    : `http://localhost:5000${formData.pdfUrl}`;
-                  window.open(pdfUrl, '_blank');
-                }}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </Button>
-            )}
-          </div>
+          <DialogTitle>
+            {mode === 'add' ? 'Add New Lead' : mode === 'edit' ? 'Edit Lead' : 'View Lead'}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="mt-4">
@@ -653,7 +649,18 @@ export default function CustomerFormDialog({
                     ) : (
                       <Select
                         value={formData.dsaId}
-                        onValueChange={(value) => setFormData({ ...formData, dsaId: value })}
+                        onValueChange={(value) => {
+                          // Check if current bank is valid for new DSA
+                          const newDsa = dsas.find((d: any) => d.id === value);
+                          let newBankId = formData.bankId;
+                          if (newDsa?.bankDetails && newDsa.bankDetails.length > 0) {
+                            const dsaBankIds = newDsa.bankDetails.map((bd: any) => bd.bankId);
+                            if (!dsaBankIds.includes(formData.bankId)) {
+                              newBankId = ''; // Clear bank if not in new DSA's banks
+                            }
+                          }
+                          setFormData({ ...formData, dsaId: value, bankId: newBankId });
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select DSA" />
@@ -685,7 +692,7 @@ export default function CustomerFormDialog({
                         <SelectValue placeholder="Select bank" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border border-border">
-                        {banks.map((bank: any) => (
+                        {filteredBanks.map((bank: any) => (
                           <SelectItem key={bank.id} value={bank.id}>
                             {bank.name}
                           </SelectItem>
@@ -882,6 +889,25 @@ export default function CustomerFormDialog({
 
             {/* Tab 6: Remarks */}
             <TabsContent value="remarks" className="space-y-4 min-h-[420px]">
+              {/* PDF Download Button */}
+              {customer?.pdfUrl && (
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const pdfUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${customer.pdfUrl}`;
+                      window.open(pdfUrl, '_blank');
+                    }}
+                    className="gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Customer PDF
+                  </Button>
+                </div>
+              )}
+
               {/* Loan Status */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-primary">Loan Status</h4>

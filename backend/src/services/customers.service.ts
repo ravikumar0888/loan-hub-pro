@@ -169,6 +169,7 @@ export class CustomersService {
           location: true,
           organizationId: true,
           createdBy: true,
+          pdfUrl: true,
           connector: {
             select: {
               id: true,

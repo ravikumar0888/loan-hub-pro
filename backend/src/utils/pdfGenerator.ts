@@ -111,7 +111,8 @@ export class PDFGenerator {
           doc.moveDown(0.5);
 
           fields.forEach(({ label, value }) => {
-            if (value) {
+            // Only show field if value exists and is not empty string
+            if (value !== null && value !== undefined && value !== '') {
               doc
                 .fontSize(10)
                 .fillColor(textColor)
@@ -191,11 +192,7 @@ export class PDFGenerator {
           { label: 'Loan Type', value: loanTypeMap[customer.loanType] || customer.loanType },
           { label: 'Case Type', value: customer.caseType ? caseTypeMap[customer.caseType] : null },
           { label: 'Loan Amount', value: `Rs. ${customer.loanAmount.toLocaleString('en-IN')}` },
-          { label: 'Bank', value: customer.bank?.name },
-          { label: 'Connector', value: customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : null },
-          { label: 'DSA', value: customer.dsa?.name },
-          { label: 'Lead Owner', value: customer.leadOwnerUser ? `${customer.leadOwnerUser.firstName} ${customer.leadOwnerUser.lastName}` : null },
-          { label: 'Sales Manager', value: customer.salesManager },
+          { label: 'Bank', value: customer.bank?.name || null },
         ]);
 
         // Footer
