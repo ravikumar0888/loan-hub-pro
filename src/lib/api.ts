@@ -483,3 +483,25 @@ export const notificationsApi = {
       method: 'PUT',
     }),
 };
+
+// DSA Invoice API
+export const dsaInvoiceApi = {
+  generateInvoice: (data: { dsaId: string; month: number; year: number }) =>
+    apiRequest<{ success: boolean; data: any }>('/dsa-invoices', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getInvoices: (params?: { dsaId?: string; month?: string; year?: string; status?: string }) =>
+    apiRequest<{ success: boolean; data: any[] }>(
+      `/dsa-invoices${params ? `?${new URLSearchParams(params as any).toString()}` : ''}`
+    ),
+
+  getInvoiceById: (id: string) =>
+    apiRequest<{ success: boolean; data: any }>(`/dsa-invoices/${id}`),
+
+  deleteInvoice: (id: string) =>
+    apiRequest<{ success: boolean; message: string }>(`/dsa-invoices/${id}`, {
+      method: 'DELETE',
+    }),
+};

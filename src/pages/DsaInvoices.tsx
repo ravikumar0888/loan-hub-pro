@@ -298,7 +298,7 @@ export default function DsaInvoices() {
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Period</Label>
                   <p className="font-medium">
-                    {getMonthName(selectedInvoice.periodMonth)} {selectedInvoice.periodYear}
+                    {getMonthName(selectedInvoice.period_month)} {selectedInvoice.period_year}
                   </p>
                 </div>
               </div>
@@ -375,7 +375,7 @@ export default function DsaInvoices() {
                     <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                     <TableCell>{invoice.dsa?.name}</TableCell>
                     <TableCell>
-                      {getMonthName(invoice.periodMonth)} {invoice.periodYear}
+                      {getMonthName(invoice.period_month)} {invoice.period_year}
                     </TableCell>
                     <TableCell>{format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}</TableCell>
                     <TableCell className="text-right font-medium">

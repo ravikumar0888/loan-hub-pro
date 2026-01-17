@@ -94,7 +94,19 @@ export class DsasService {
     return transformedDsa;
   }
 
-  async createDsa(data: { name: string; bankDetails: any[]; organizationId?: string | null }) {
+  async createDsa(data: {
+    name: string;
+    companyName?: string | null;
+    address?: string | null;
+    city?: string | null;
+    pinCode?: string | null;
+    email?: string | null;
+    gstin?: string | null;
+    stateName?: string | null;
+    stateCode?: string | null;
+    bankDetails: any[];
+    organizationId?: string | null
+  }) {
     // Check if DSA already exists in this organization
     const existing = await prisma.dsa.findFirst({
       where: {
@@ -110,6 +122,14 @@ export class DsasService {
     const dsa = await prisma.dsa.create({
       data: {
         name: data.name,
+        companyName: data.companyName,
+        address: data.address,
+        city: data.city,
+        pinCode: data.pinCode,
+        email: data.email,
+        gstin: data.gstin,
+        stateName: data.stateName,
+        stateCode: data.stateCode,
         organizationId: data.organizationId,
         bankDetails: {
           create: data.bankDetails.map((bd) => ({
@@ -140,7 +160,19 @@ export class DsasService {
     return transformedDsa;
   }
 
-  async updateDsa(id: string, data: { name?: string; isActive?: boolean; bankDetails?: any[] }, userRole?: string, organizationId?: string | null) {
+  async updateDsa(id: string, data: {
+    name?: string;
+    companyName?: string | null;
+    address?: string | null;
+    city?: string | null;
+    pinCode?: string | null;
+    email?: string | null;
+    gstin?: string | null;
+    stateName?: string | null;
+    stateCode?: string | null;
+    isActive?: boolean;
+    bankDetails?: any[]
+  }, userRole?: string, organizationId?: string | null) {
     const dsa = await prisma.dsa.findUnique({ where: { id } });
 
     if (!dsa) {
@@ -167,6 +199,14 @@ export class DsasService {
 
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
+    if (data.companyName !== undefined) updateData.companyName = data.companyName;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.city !== undefined) updateData.city = data.city;
+    if (data.pinCode !== undefined) updateData.pinCode = data.pinCode;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.gstin !== undefined) updateData.gstin = data.gstin;
+    if (data.stateName !== undefined) updateData.stateName = data.stateName;
+    if (data.stateCode !== undefined) updateData.stateCode = data.stateCode;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     // Update bank details if provided

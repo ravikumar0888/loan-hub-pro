@@ -20,7 +20,7 @@ import reportsRoutes from './routes/reports.routes';
 import payoutsRoutes from './routes/payouts.routes';
 import profileRoutes from './routes/profile.routes';
 import notificationsRoutes from './routes/notifications.routes';
-// import dsaInvoiceRoutes from './routes/dsaInvoice.routes';
+import dsaInvoiceRoutes from './routes/dsaInvoice.routes';
 // import chatbotRoutes from './routes/chatbot.routes';
 
 // Import middleware
@@ -101,7 +101,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/payouts', payoutsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationsRoutes);
-// app.use('/api/dsa-invoices', organizationContext, dsaInvoiceRoutes);
+app.use('/api/dsa-invoices', dsaInvoiceRoutes);
 // app.use('/api/chatbot', organizationContext, chatbotRoutes);
 
 // ============================================

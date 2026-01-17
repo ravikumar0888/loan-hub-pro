@@ -15,6 +15,7 @@ import {
   LogOut,
   Wallet,
   User,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -64,6 +65,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       icon: Briefcase,
       path: '/dsa',
       roles: ['superadmin'],
+    },
+    {
+      label: 'DSA Invoices',
+      icon: Receipt,
+      path: '/dsa-invoices',
+      roles: ['superadmin', 'admin'],
     },
     {
       label: 'Payouts',

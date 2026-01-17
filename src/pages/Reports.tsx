@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Customer } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -19,13 +20,14 @@ import {
 } from '@/components/ui/select';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import { Badge } from '@/components/ui/badge';
-import { FileSpreadsheet, Download, Filter, RefreshCw, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, Download, Filter, RefreshCw, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { LoanStatus } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi, usersApi, dsasApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusStyles: Record<LoanStatus, string> = {
   login: 'bg-primary/10 text-primary border-primary/20',
@@ -39,12 +41,19 @@ const statusStyles: Record<LoanStatus, string> = {
 
 export default function Reports() {
   const { toast } = useToast();
+  const { role } = useAuth();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   });
   const [selectedDSA, setSelectedDSA] = useState<string>('all');
   const [selectedConnector, setSelectedConnector] = useState<string>('all');
+
+  // Table search, filter, and pagination state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
 
   // Fetch report data from backend
   const { data: reportData, isLoading: isLoadingReport } = useQuery({
@@ -81,7 +90,30 @@ export default function Reports() {
 
   const connectors = connectorsData || [];
   const dsas = dsasData || [];
-  const filteredData = reportData || [];
+  const reportList = reportData || [];
+
+  // Client-side search and status filtering
+  const filteredData = reportList.filter((customer: any) => {
+    const matchesSearch =
+      customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.mobile?.includes(searchQuery) ||
+      customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.applicationId?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, reportData]);
 
   const handleExport = async () => {
     try {
@@ -133,6 +165,9 @@ export default function Reports() {
     });
     setSelectedDSA('all');
     setSelectedConnector('all');
+    setSearchQuery('');
+    setStatusFilter('all');
+    setCurrentPage(1);
   };
 
   const totalAmount = filteredData.reduce((sum: number, c: any) => sum + Number(c.loanAmount), 0);
@@ -240,6 +275,36 @@ export default function Reports() {
 
       {/* Data Table */}
       <div className="bg-card rounded-xl shadow-md overflow-hidden">
+        {/* Search and Status Filter */}
+        <div className="p-4 border-b border-border">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, mobile, email, or application ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border">
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="login">Login</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="disbursed">Disbursed</SelectItem>
+                <SelectItem value="hold">Hold</SelectItem>
+                <SelectItem value="relook">Relook</SelectItem>
+                <SelectItem value="drop">Drop</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           {isLoadingReport ? (
             <div className="flex items-center justify-center py-12">
@@ -255,26 +320,28 @@ export default function Reports() {
                   <TableHead>Date</TableHead>
                   <TableHead>Application ID</TableHead>
                   <TableHead>Customer</TableHead>
+                  <TableHead>Contact</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Loan Type</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Payout</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>DSA</TableHead>
                   <TableHead>Channel Partner</TableHead>
                   <TableHead>Lead Owner</TableHead>
                   <TableHead>Sales Manager</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.length === 0 ? (
+                {paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-12">
+                    <TableCell colSpan={13} className="text-center py-12">
                       <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                       <p className="text-muted-foreground">No data found for selected filters</p>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredData.map((customer: any) => (
+                  paginatedData.map((customer: any) => (
                     <TableRow key={customer.id} className="table-row-hover">
                       <TableCell className="text-sm">
                         {format(new Date(customer.applicationDate || customer.date || customer.createdAt), 'MMM dd, yyyy')}
@@ -282,7 +349,9 @@ export default function Reports() {
                       <TableCell className="text-sm font-medium">
                         {customer.applicationId || '-'}
                       </TableCell>
-                      <TableCell className="font-medium">{customer.name}</TableCell>
+                      <TableCell>
+                        <div className="font-medium text-foreground">{customer.name}</div>
+                      </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <p>{customer.mobile}</p>
@@ -295,7 +364,7 @@ export default function Reports() {
                         {customer.location || '-'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{customer.loanType}</Badge>
+                        <Badge variant="outline" className="font-medium">{customer.loanType}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">
                         ₹{Number(customer.loanAmount).toLocaleString('en-IN')}
@@ -313,9 +382,14 @@ export default function Reports() {
                           {customer.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}</TableCell>
-                      <TableCell>{customer.leadOwnerName || '-'}</TableCell>
-                      <TableCell>{customer.salesManagerName || '-'}</TableCell>
+                      <TableCell className="text-sm">
+                        {customer.dsa?.name || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
+                      </TableCell>
+                      <TableCell className="text-sm">{customer.leadOwnerName || '-'}</TableCell>
+                      <TableCell className="text-sm">{customer.salesManagerName || '-'}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -323,6 +397,38 @@ export default function Reports() {
             </Table>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-border flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+              {Math.min(currentPage * itemsPerPage, filteredData.length)} of{' '}
+              {filteredData.length} entries
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm font-medium px-2">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

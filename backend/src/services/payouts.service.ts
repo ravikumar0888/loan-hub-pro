@@ -283,11 +283,11 @@ export class PayoutsService {
         });
 
         const totalEarned = entries
-          .filter((e) => e.entryType === 'credit')
+          .filter((e) => e.entry_type === 'credit')
           .reduce((sum, e) => sum + Number(e.amount), 0);
 
         const totalAdvance = entries
-          .filter((e) => e.entryType === 'debit')
+          .filter((e) => e.entry_type === 'debit')
           .reduce((sum, e) => sum + Number(e.amount), 0);
 
         const currentBalance = totalEarned - totalAdvance;

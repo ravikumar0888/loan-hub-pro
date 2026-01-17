@@ -17,8 +17,8 @@ interface InvoiceData {
   id: string;
   invoiceNumber: string;
   invoiceDate: Date;
-  periodMonth: number;
-  periodYear: number;
+  period_month: number;
+  period_year: number;
   taxableAmount: any;
   cgstRate: any;
   cgstAmount: any;
@@ -160,7 +160,7 @@ export class DsaInvoicePdfGenerator {
 
         doc.font('Helvetica-Bold').text('Period:', rightX, rightY);
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        doc.font('Helvetica').text(`${monthNames[invoice.periodMonth - 1]} ${invoice.periodYear}`, rightX + 70, rightY);
+        doc.font('Helvetica').text(`${monthNames[invoice.period_month - 1]} ${invoice.period_year}`, rightX + 70, rightY);
         rightY += 15;
 
         // Move y down to below seller details
@@ -217,7 +217,7 @@ export class DsaInvoicePdfGenerator {
 
         // Line Item
         doc.fontSize(9).font('Helvetica');
-        const description = `DSA Commission for ${monthNames[invoice.periodMonth - 1]} ${invoice.periodYear}`;
+        const description = `DSA Commission for ${monthNames[invoice.period_month - 1]} ${invoice.period_year}`;
         doc.text(description, 50, y, { width: 220 });
         doc.text(invoice.hsnSac, 280, y);
         doc.text('-', 370, y);

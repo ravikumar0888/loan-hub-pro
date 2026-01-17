@@ -37,8 +37,13 @@ export class ReportsService {
       where.connectorId = query.connectorId;
     }
 
-    // Note: DSA filtering would require additional schema modifications
-    // For now, we'll focus on connector-based filtering
+    if (query.dsaId) {
+      where.dsaId = query.dsaId;
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
 
     const customers = await prisma.customer.findMany({
       where,
@@ -181,6 +186,14 @@ export class ReportsService {
 
     if (query.connectorId) {
       where.connectorId = query.connectorId;
+    }
+
+    if (query.dsaId) {
+      where.dsaId = query.dsaId;
+    }
+
+    if (query.status) {
+      where.status = query.status;
     }
 
     const [totalApplications, totals, disbursedTotals] = await Promise.all([

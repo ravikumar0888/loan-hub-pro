@@ -20,6 +20,7 @@ import Customers from "./pages/Customers";
 import Banks from "./pages/Banks";
 import Users from "./pages/Users";
 import DSAPage from "./pages/DSA";
+import DsaInvoices from "./pages/DsaInvoices";
 import Reports from "./pages/Reports";
 import Payouts from "./pages/Payouts";
 import Profile from "./pages/Profile";
@@ -128,6 +129,17 @@ function AppRoutes() {
         }
       >
         <Route index element={<DSAPage />} />
+      </Route>
+
+      <Route
+        path="/dsa-invoices"
+        element={
+          <ProtectedRoute allowedRoles={['superadmin', 'admin']}>
+            <DashboardLayout title="DSA Invoices" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<DsaInvoices />} />
       </Route>
 
       <Route

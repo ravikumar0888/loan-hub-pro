@@ -48,6 +48,14 @@ export default function DSAPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [dsaName, setDsaName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [pinCode, setPinCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [stateCode, setStateCode] = useState('');
   const [bankDetails, setBankDetails] = useState<BankDetail[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -122,6 +130,14 @@ export default function DSAPage() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['dsas'] });
       setDsaName('');
+      setCompanyName('');
+      setAddress('');
+      setCity('');
+      setPinCode('');
+      setEmail('');
+      setGstin('');
+      setStateName('');
+      setStateCode('');
       setBankDetails([]);
       setErrors({});
       setIsDialogOpen(false);
@@ -148,6 +164,14 @@ export default function DSAPage() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['dsas'] });
       setDsaName('');
+      setCompanyName('');
+      setAddress('');
+      setCity('');
+      setPinCode('');
+      setEmail('');
+      setGstin('');
+      setStateName('');
+      setStateCode('');
       setBankDetails([]);
       setErrors({});
       setIsEditDialogOpen(false);
@@ -201,6 +225,14 @@ export default function DSAPage() {
 
     const dsaData = {
       name: dsaName.trim(),
+      companyName: companyName.trim() || null,
+      address: address.trim() || null,
+      city: city.trim() || null,
+      pinCode: pinCode.trim() || null,
+      email: email.trim() || null,
+      gstin: gstin.trim() || null,
+      stateName: stateName.trim() || null,
+      stateCode: stateCode.trim() || null,
       bankDetails: bankDetails.map((bd) => ({
         bankId: bd.bankId,
         loanType: bd.loanType,
@@ -219,6 +251,14 @@ export default function DSAPage() {
   const handleEdit = (dsa: DSA) => {
     setSelectedDSA(dsa);
     setDsaName(dsa.name);
+    setCompanyName((dsa as any).companyName || '');
+    setAddress((dsa as any).address || '');
+    setCity((dsa as any).city || '');
+    setPinCode((dsa as any).pinCode || '');
+    setEmail((dsa as any).email || '');
+    setGstin((dsa as any).gstin || '');
+    setStateName((dsa as any).stateName || '');
+    setStateCode((dsa as any).stateCode || '');
 
     // Convert DSA bank details to editable format
     const details = dsa.bankDetails?.map(bd => ({
@@ -249,6 +289,14 @@ export default function DSAPage() {
 
     const dsaData = {
       name: dsaName.trim(),
+      companyName: companyName.trim() || null,
+      address: address.trim() || null,
+      city: city.trim() || null,
+      pinCode: pinCode.trim() || null,
+      email: email.trim() || null,
+      gstin: gstin.trim() || null,
+      stateName: stateName.trim() || null,
+      stateCode: stateCode.trim() || null,
       bankDetails: bankDetails.map((bd) => ({
         bankId: bd.bankId,
         loanType: bd.loanType,
@@ -284,16 +332,102 @@ export default function DSAPage() {
               <DialogTitle>Add Corporate DSA</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="dsaName">DSA Name *</Label>
-                <Input
-                  id="dsaName"
-                  value={dsaName}
-                  onChange={(e) => setDsaName(e.target.value)}
-                  placeholder="Enter DSA company name"
-                  error={!!errors.dsaName}
-                />
-                {errors.dsaName && <p className="text-sm text-destructive">{errors.dsaName}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dsaName">DSA Name *</Label>
+                  <Input
+                    id="dsaName"
+                    value={dsaName}
+                    onChange={(e) => setDsaName(e.target.value)}
+                    placeholder="Enter DSA name"
+                    error={!!errors.dsaName}
+                  />
+                  {errors.dsaName && <p className="text-sm text-destructive">{errors.dsaName}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Enter company name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter email address"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gstin">GSTIN</Label>
+                  <Input
+                    id="gstin"
+                    value={gstin}
+                    onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                    placeholder="Enter GSTIN"
+                    maxLength={15}
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Enter address"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Enter city"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pinCode">Pin Code</Label>
+                  <Input
+                    id="pinCode"
+                    value={pinCode}
+                    onChange={(e) => setPinCode(e.target.value)}
+                    placeholder="Enter pin code"
+                    maxLength={6}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stateName">State</Label>
+                  <Input
+                    id="stateName"
+                    value={stateName}
+                    onChange={(e) => setStateName(e.target.value)}
+                    placeholder="Enter state name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stateCode">State Code</Label>
+                  <Input
+                    id="stateCode"
+                    value={stateCode}
+                    onChange={(e) => setStateCode(e.target.value)}
+                    placeholder="Enter state code (e.g., 27)"
+                    maxLength={2}
+                  />
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -382,6 +516,14 @@ export default function DSAPage() {
                   onClick={() => {
                     setIsDialogOpen(false);
                     setDsaName('');
+                    setCompanyName('');
+                    setAddress('');
+                    setCity('');
+                    setPinCode('');
+                    setEmail('');
+                    setGstin('');
+                    setStateName('');
+                    setStateCode('');
                     setBankDetails([]);
                     setErrors({});
                   }}
@@ -524,9 +666,48 @@ export default function DSAPage() {
           </DialogHeader>
           {selectedDSA && (
             <div className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">DSA Name</Label>
-                <p className="text-foreground font-medium text-lg">{selectedDSA.name}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">DSA Name</Label>
+                  <p className="text-foreground font-medium">{selectedDSA.name}</p>
+                </div>
+                {(selectedDSA as any).companyName && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Company Name</Label>
+                    <p className="text-foreground">{(selectedDSA as any).companyName}</p>
+                  </div>
+                )}
+                {(selectedDSA as any).email && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Email</Label>
+                    <p className="text-foreground">{(selectedDSA as any).email}</p>
+                  </div>
+                )}
+                {(selectedDSA as any).gstin && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">GSTIN</Label>
+                    <p className="text-foreground">{(selectedDSA as any).gstin}</p>
+                  </div>
+                )}
+                {(selectedDSA as any).address && (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-muted-foreground">Address</Label>
+                    <p className="text-foreground">
+                      {(selectedDSA as any).address}
+                      {(selectedDSA as any).city && `, ${(selectedDSA as any).city}`}
+                      {(selectedDSA as any).pinCode && ` - ${(selectedDSA as any).pinCode}`}
+                    </p>
+                  </div>
+                )}
+                {(selectedDSA as any).stateName && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">State</Label>
+                    <p className="text-foreground">
+                      {(selectedDSA as any).stateName}
+                      {(selectedDSA as any).stateCode && ` (Code: ${(selectedDSA as any).stateCode})`}
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Bank Partnerships</Label>
@@ -569,6 +750,14 @@ export default function DSAPage() {
         if (!open) {
           setSelectedDSA(null);
           setDsaName('');
+          setCompanyName('');
+          setAddress('');
+          setCity('');
+          setPinCode('');
+          setEmail('');
+          setGstin('');
+          setStateName('');
+          setStateCode('');
           setBankDetails([]);
           setErrors({});
         }
@@ -578,16 +767,102 @@ export default function DSAPage() {
             <DialogTitle>Edit Corporate DSA</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-6 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-dsaName">DSA Name *</Label>
-              <Input
-                id="edit-dsaName"
-                value={dsaName}
-                onChange={(e) => setDsaName(e.target.value)}
-                placeholder="Enter DSA company name"
-                error={!!errors.dsaName}
-              />
-              {errors.dsaName && <p className="text-sm text-destructive">{errors.dsaName}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-dsaName">DSA Name *</Label>
+                <Input
+                  id="edit-dsaName"
+                  value={dsaName}
+                  onChange={(e) => setDsaName(e.target.value)}
+                  placeholder="Enter DSA name"
+                  error={!!errors.dsaName}
+                />
+                {errors.dsaName && <p className="text-sm text-destructive">{errors.dsaName}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-companyName">Company Name</Label>
+                <Input
+                  id="edit-companyName"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Enter company name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter email address"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-gstin">GSTIN</Label>
+                <Input
+                  id="edit-gstin"
+                  value={gstin}
+                  onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                  placeholder="Enter GSTIN"
+                  maxLength={15}
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="edit-address">Address</Label>
+                <Input
+                  id="edit-address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Enter address"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-city">City</Label>
+                <Input
+                  id="edit-city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Enter city"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-pinCode">Pin Code</Label>
+                <Input
+                  id="edit-pinCode"
+                  value={pinCode}
+                  onChange={(e) => setPinCode(e.target.value)}
+                  placeholder="Enter pin code"
+                  maxLength={6}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-stateName">State</Label>
+                <Input
+                  id="edit-stateName"
+                  value={stateName}
+                  onChange={(e) => setStateName(e.target.value)}
+                  placeholder="Enter state name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-stateCode">State Code</Label>
+                <Input
+                  id="edit-stateCode"
+                  value={stateCode}
+                  onChange={(e) => setStateCode(e.target.value)}
+                  placeholder="Enter state code (e.g., 27)"
+                  maxLength={2}
+                />
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -677,6 +952,14 @@ export default function DSAPage() {
                   setIsEditDialogOpen(false);
                   setSelectedDSA(null);
                   setDsaName('');
+                  setCompanyName('');
+                  setAddress('');
+                  setCity('');
+                  setPinCode('');
+                  setEmail('');
+                  setGstin('');
+                  setStateName('');
+                  setStateCode('');
                   setBankDetails([]);
                   setErrors({});
                 }}

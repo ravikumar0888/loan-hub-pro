@@ -135,8 +135,8 @@ export class DsaInvoiceService {
     const existingInvoice = await prisma.dsaInvoice.findFirst({
       where: {
         dsaId,
-        periodMonth: month,
-        periodYear: year,
+        period_month: month,
+        period_year: year,
       },
     });
 
@@ -151,8 +151,8 @@ export class DsaInvoiceService {
         dsaId,
         issuedById,
         invoiceDate: new Date(),
-        periodMonth: month,
-        periodYear: year,
+        period_month: month,
+        period_year: year,
         taxableAmount: new Prisma.Decimal(taxableAmount),
         cgstRate,
         cgstAmount: new Prisma.Decimal(cgstAmount),
@@ -223,8 +223,8 @@ export class DsaInvoiceService {
     const where: any = {};
 
     if (filters.dsaId) where.dsaId = filters.dsaId;
-    if (filters.month) where.periodMonth = parseInt(filters.month);
-    if (filters.year) where.periodYear = parseInt(filters.year);
+    if (filters.month) where.period_month = parseInt(filters.month);
+    if (filters.year) where.period_year = parseInt(filters.year);
     if (filters.status) where.status = filters.status;
 
     const invoices = await prisma.dsaInvoice.findMany({
