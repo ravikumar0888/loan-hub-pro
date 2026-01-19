@@ -28,15 +28,24 @@ export default function Customers() {
 
   const customers = customersData || [];
 
+  // Helper to invalidate all dashboard-related queries when customer data changes
+  const invalidateDashboardQueries = () => {
+    // Invalidate all queries that start with these prefixes (refetchType defaults to 'active')
+    queryClient.invalidateQueries({ queryKey: ['customers'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-recent-customers'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-top-performers'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-trends'] });
+    queryClient.invalidateQueries({ queryKey: ['reports'] });
+  };
+
   // Create customer mutation
   const createCustomerMutation = useMutation({
     mutationFn: async (data: any) => {
       return await customersApi.createCustomer(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-recent-customers'] });
+      invalidateDashboardQueries();
 
       setIsFormDialogOpen(false);
       setSelectedCustomer(null);
@@ -61,9 +70,7 @@ export default function Customers() {
       return await customersApi.updateCustomer(id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-recent-customers'] });
+      invalidateDashboardQueries();
 
       setIsFormDialogOpen(false);
       setSelectedCustomer(null);
