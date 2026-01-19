@@ -33,10 +33,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Building2 } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Building2, X } from 'lucide-react';
 import { Organization, PricingTier } from '@/types';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+
+type AddonRole = 'admin' | 'backoffice' | 'channel_partner';
+
+interface Addon {
+  id: string;
+  role: AddonRole;
+  quantity: number;
+  price: number;
+}
+
+// Addon pricing configuration (commented out for now)
+// const ADDON_PRICING = {
+//   admin: 500,
+//   backoffice: 200,
+//   channel_partner: 100,
+// };
+
+// const ADDON_ROLE_LABELS = {
+//   admin: 'Admin',
+//   backoffice: 'Back Office',
+//   channel_partner: 'Channel Partner',
+// };
 
 export default function OrganizationsTab() {
   const { organizations, createOrganization, updateOrganization, deleteOrganization, pricingPlans } = useOrganization();
@@ -50,7 +72,7 @@ export default function OrganizationsTab() {
     address: '',
     website: '',
     pricingTier: 'starter' as PricingTier,
-    seats: 1,
+    pricePerSeat: 4999, // Default to Standard pricing
     status: 'active' as 'active' | 'suspended' | 'trial',
     // Super admin fields
     firstName: '',
@@ -59,6 +81,7 @@ export default function OrganizationsTab() {
     mobile: '',
     password: '',
   });
+  const [addons, setAddons] = useState<Addon[]>([]);
 
   const filteredOrganizations = organizations.filter(
     org =>
@@ -74,7 +97,7 @@ export default function OrganizationsTab() {
       address: '',
       website: '',
       pricingTier: 'starter',
-      seats: 1,
+      pricePerSeat: 4999, // Default Standard pricing
       status: 'active',
       firstName: '',
       lastName: '',
@@ -82,8 +105,86 @@ export default function OrganizationsTab() {
       mobile: '',
       password: '',
     });
+    setAddons([]);
     setEditingOrg(null);
   };
+
+  const addNewAddon = () => {
+    const newAddon: Addon = {
+      id: Math.random().toString(36).substring(7),
+      role: 'admin',
+      quantity: 1,
+      price: 500, // Default price for admin
+    };
+    setAddons([...addons, newAddon]);
+  };
+
+  const removeAddon = (id: string) => {
+    setAddons(addons.filter(addon => addon.id !== id));
+  };
+
+  const updateAddon = (id: string, field: 'role' | 'quantity' | 'price', value: AddonRole | number) => {
+    setAddons(addons.map(addon => {
+      if (addon.id !== id) return addon;
+
+      // If role changes, update price to default for that role
+      if (field === 'role') {
+        const newRole = value as AddonRole;
+        const defaultPrices: Record<AddonRole, number> = {
+          admin: 500,
+          backoffice: 200,
+          channel_partner: 100,
+        };
+        return { ...addon, role: newRole, price: defaultPrices[newRole] };
+      }
+
+      return { ...addon, [field]: value };
+    }));
+  };
+
+  // Get plan details with user counts
+  const getPlanDetails = (tier: PricingTier) => {
+    const planDetails = {
+      starter: {
+        name: 'Standard',
+        users: { superadmin: 1, admin: 1, backoffice: 2, connector: 10 },
+        totalSeats: 14,
+      },
+      enterprise: {
+        name: 'Enterprise',
+        users: { superadmin: 1, admin: 2, backoffice: 5, connector: 25 },
+        totalSeats: 33,
+      },
+      professional: {
+        name: 'Professional',
+        users: { superadmin: 1, admin: 5, backoffice: 10, connector: 50 },
+        totalSeats: 66,
+      },
+    };
+    return planDetails[tier];
+  };
+
+  // Calculate total bill amount
+  const calculateTotalBill = () => {
+    const baseCost = formData.pricePerSeat; // Fixed plan price
+    const addonCost = addons.reduce((total, addon) => {
+      return total + (addon.price * addon.quantity);
+    }, 0);
+    return baseCost + addonCost;
+  };
+
+  // Pricing calculation (commented out for now)
+  // const calculateTotalPrice = () => {
+  //   const plan = pricingPlans.find(p => p.tier === formData.pricingTier);
+  //   if (!plan) return 0;
+
+  //   const baseCost = plan.pricePerSeat * formData.seats;
+  //   const addonCost = addons.reduce((total, addon) => {
+  //     return total + (ADDON_PRICING[addon.role] * addon.quantity);
+  //   }, 0);
+
+  //   return baseCost + addonCost;
+  // };
 
   const openCreateDialog = () => {
     resetForm();
@@ -93,6 +194,7 @@ export default function OrganizationsTab() {
   const openEditDialog = (org: Organization) => {
     setEditingOrg(org);
     const superAdmin = org.users?.[0];
+    const plan = pricingPlans.find(p => p.tier === org.pricingTier);
     setFormData({
       name: org.name,
       email: org.email,
@@ -100,7 +202,7 @@ export default function OrganizationsTab() {
       address: org.address,
       website: org.website || '',
       pricingTier: org.pricingTier,
-      seats: org.seats,
+      pricePerSeat: plan?.pricePerSeat || 4999,
       status: org.status,
       firstName: superAdmin?.firstName || '',
       lastName: superAdmin?.lastName || '',
@@ -108,6 +210,14 @@ export default function OrganizationsTab() {
       mobile: superAdmin?.mobile || '',
       password: '', // Don't populate password on edit
     });
+
+    // Load existing add-ons if available
+    if ((org as any).addons && Array.isArray((org as any).addons)) {
+      setAddons((org as any).addons);
+    } else {
+      setAddons([]);
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -126,6 +236,13 @@ export default function OrganizationsTab() {
     }
 
     try {
+      // Calculate seats based on plan
+      const planDetails = getPlanDetails(formData.pricingTier);
+      const totalSeats = planDetails.totalSeats;
+
+      // Calculate total billing amount (base plan + add-ons)
+      const totalBillingAmount = calculateTotalBill();
+
       if (editingOrg) {
         // Build update data
         const updateData: any = {
@@ -135,7 +252,9 @@ export default function OrganizationsTab() {
           address: formData.address,
           website: formData.website,
           pricingTier: formData.pricingTier,
-          seats: formData.seats,
+          seats: totalSeats,
+          monthlyAmount: totalBillingAmount, // Total billing amount including add-ons
+          addons: addons, // Save add-ons configuration
           status: formData.status,
         };
 
@@ -156,7 +275,9 @@ export default function OrganizationsTab() {
           address: formData.address,
           website: formData.website,
           pricingTier: formData.pricingTier,
-          seats: formData.seats,
+          seats: totalSeats,
+          monthlyAmount: totalBillingAmount, // Total billing amount including add-ons
+          addons: addons, // Save add-ons configuration
           adminFirstName: formData.firstName,
           adminLastName: formData.lastName,
           adminEmail: formData.adminEmail,
@@ -407,14 +528,20 @@ export default function OrganizationsTab() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password {!editingOrg && '*'}</Label>
+                <Label htmlFor="password">
+                  Password {!editingOrg && '*'}
+                  {editingOrg && <span className="text-xs font-normal text-muted-foreground ml-2">(currently set)</span>}
+                </Label>
                 <Input
                   id="password"
                   type="password"
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  placeholder={editingOrg ? "Leave blank to keep current" : "Enter password"}
+                  placeholder={editingOrg ? "Enter new password to change" : "Enter password"}
                 />
+                {editingOrg && (
+                  <p className="text-xs text-muted-foreground">Leave blank to keep current password</p>
+                )}
               </div>
             </div>
 
@@ -427,32 +554,64 @@ export default function OrganizationsTab() {
                   <Label>Pricing Plan *</Label>
                   <Select
                     value={formData.pricingTier}
-                    onValueChange={value => setFormData({ ...formData, pricingTier: value as PricingTier })}
+                    onValueChange={value => {
+                      const newTier = value as PricingTier;
+                      const tierPrices: Record<PricingTier, number> = {
+                        starter: 4999,
+                        professional: 13999,
+                        enterprise: 8999,
+                      };
+                      setFormData({
+                        ...formData,
+                        pricingTier: newTier,
+                        pricePerSeat: tierPrices[newTier]
+                      });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {pricingPlans.map(plan => (
-                        <SelectItem key={plan.id} value={plan.tier}>
-                          {plan.name} (₹{plan.pricePerSeat}/seat)
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="starter">Standard</SelectItem>
+                      <SelectItem value="professional">Professional</SelectItem>
+                      <SelectItem value="enterprise">Enterprise</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="seats">Seats *</Label>
+                  <Label htmlFor="pricePerSeat">Price (₹) *</Label>
                   <Input
-                    id="seats"
+                    id="pricePerSeat"
                     type="number"
                     min={1}
-                    value={formData.seats}
-                    onChange={e => setFormData({ ...formData, seats: parseInt(e.target.value) || 1 })}
+                    value={formData.pricePerSeat}
+                    onChange={e => setFormData({ ...formData, pricePerSeat: parseInt(e.target.value) || 0 })}
+                    placeholder="4999"
                   />
                 </div>
               </div>
+
+              {/* Plan Description */}
+              {(() => {
+                const planDetails = getPlanDetails(formData.pricingTier);
+                return (
+                  <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                    <p className="text-sm font-medium text-foreground">Plan Includes:</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                      <div>• {planDetails.users.superadmin} Superadmin</div>
+                      <div>• {planDetails.users.admin} Admin</div>
+                      <div>• {planDetails.users.backoffice} Backoffice</div>
+                      <div>• {planDetails.users.connector} Connector</div>
+                    </div>
+                    <div className="pt-2 border-t border-border/50">
+                      <p className="text-sm font-semibold text-foreground">
+                        Total Users: {planDetails.totalSeats}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -470,6 +629,89 @@ export default function OrganizationsTab() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Add-ons Section */}
+            <div className="space-y-3 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Add-ons (Optional)
+                  {editingOrg && <span className="text-xs font-normal text-muted-foreground ml-2">- Modify plan pricing</span>}
+                </h3>
+                <Button type="button" variant="outline" size="sm" onClick={addNewAddon}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Add-on
+                </Button>
+              </div>
+
+              {addons.length > 0 && (
+                <div className="space-y-2">
+                  {addons.map((addon) => (
+                    <div key={addon.id} className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-3 gap-2">
+                        <Select
+                          value={addon.role}
+                          onValueChange={(value) => updateAddon(addon.id, 'role', value as AddonRole)}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="backoffice">Back Office</SelectItem>
+                            <SelectItem value="channel_partner">Channel Partner</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Input
+                          type="number"
+                          min={1}
+                          value={addon.quantity}
+                          onChange={(e) => updateAddon(addon.id, 'quantity', parseInt(e.target.value) || 1)}
+                          placeholder="Quantity"
+                          className="h-9"
+                        />
+
+                        <Input
+                          type="number"
+                          min={1}
+                          value={addon.price}
+                          onChange={(e) => updateAddon(addon.id, 'price', parseInt(e.target.value) || 0)}
+                          placeholder="Price"
+                          className="h-9"
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => removeAddon(addon.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Total Bill Amount */}
+            <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-foreground">
+                  {editingOrg ? 'Updated Bill Amount' : 'Total Bill Amount'}
+                </span>
+                <span className="text-2xl font-bold text-primary">
+                  ₹{calculateTotalBill().toLocaleString()}
+                </span>
+              </div>
+              {editingOrg && addons.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Add-ons will be added to the base plan price
+                </p>
+              )}
             </div>
           </div>
 

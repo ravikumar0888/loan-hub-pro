@@ -89,4 +89,42 @@ export class InvoicesController {
       next(error);
     }
   }
+
+  async downloadInvoice(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const pdfPath = await invoicesService.generateInvoicePDF(
+        id,
+        req.user?.role,
+        req.organizationId
+      );
+
+      // Send the PDF file path as response
+      res.json({
+        success: true,
+        data: { pdfUrl: pdfPath },
+        message: 'Invoice PDF generated successfully',
+      });
+    } catch (error: any) {
+      next(error);
+    }
+  }
+
+  async deleteInvoice(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const result = await invoicesService.deleteInvoice(
+        id,
+        req.user?.role,
+        req.organizationId
+      );
+
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      next(error);
+    }
+  }
 }

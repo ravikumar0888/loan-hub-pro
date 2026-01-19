@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { dsaInvoiceController } from '../controllers/dsaInvoice.controller';
 import { authenticate } from '../middleware/auth';
 import { authorize } from '../middleware/auth';
+import { organizationContext } from '../middleware/organizationContext';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+router.use(organizationContext);
 
 /**
  * @route   POST /api/dsa-invoices

@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Users, CreditCard, TrendingUp, DollarSign, UserCheck } from 'lucide-react';
 import OrganizationsTab from './OrganizationsTab';
 import BillingTab from './BillingTab';
-import PricingTab from './PricingTab';
+// import PricingTab from './PricingTab'; // Removed - Pricing tab not needed
 
 export default function MasterAdminDashboard() {
   const { user } = useAuth();
@@ -99,10 +99,9 @@ export default function MasterAdminDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="organizations" className="space-y-4">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="organizations">Organizations</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="pricing">Pricing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="organizations">
@@ -111,10 +110,6 @@ export default function MasterAdminDashboard() {
 
           <TabsContent value="billing">
             <BillingTab />
-          </TabsContent>
-
-          <TabsContent value="pricing">
-            <PricingTab />
           </TabsContent>
         </Tabs>
       </div>

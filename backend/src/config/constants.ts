@@ -10,9 +10,8 @@ export const PAGINATION_DEFAULTS = {
 
 export const PRICING_TIER_LIMITS = {
   starter: {
-    min: 1,
-    max: 5,
-    pricePerSeat: 499,
+    fixedSeats: 14,
+    packagePrice: 4999, // Fixed package price (not per seat)
     userLimits: {
       superadmin: 1,
       admin: 1,
@@ -21,25 +20,23 @@ export const PRICING_TIER_LIMITS = {
     },
   },
   professional: {
-    min: 5,
-    max: 25,
-    pricePerSeat: 899,
-    userLimits: {
-      superadmin: 1,
-      admin: 2,
-      backoffice: 4,
-      connector: 20,
-    },
-  },
-  enterprise: {
-    min: 10,
-    max: null, // Unlimited
-    pricePerSeat: 1499,
+    fixedSeats: 66,
+    packagePrice: 13999, // Fixed package price (not per seat)
     userLimits: {
       superadmin: 1,
       admin: 5,
       backoffice: 10,
       connector: 50,
+    },
+  },
+  enterprise: {
+    fixedSeats: 33,
+    packagePrice: 8999, // Fixed package price (not per seat)
+    userLimits: {
+      superadmin: 1,
+      admin: 2,
+      backoffice: 5,
+      connector: 25,
     },
     isCustomizable: true,
     addonPricing: {

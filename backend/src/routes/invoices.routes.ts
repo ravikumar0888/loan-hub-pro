@@ -50,4 +50,18 @@ router.get(
   invoicesController.getBillingAnalytics.bind(invoicesController)
 );
 
+// Download invoice PDF
+router.get(
+  '/:id/download',
+  authorize(['master_admin', 'superadmin', 'admin']),
+  invoicesController.downloadInvoice.bind(invoicesController)
+);
+
+// Delete invoice - master_admin only
+router.delete(
+  '/:id',
+  authorize(['master_admin']),
+  invoicesController.deleteInvoice.bind(invoicesController)
+);
+
 export default router;

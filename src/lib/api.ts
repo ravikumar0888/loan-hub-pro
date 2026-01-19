@@ -399,7 +399,7 @@ export const invoicesApi = {
 
   updateStatus: (id: string, status: string) =>
     apiRequest<{ success: boolean; data: any }>(`/invoices/${id}/status`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
 
@@ -407,6 +407,16 @@ export const invoicesApi = {
     apiRequest<{ success: boolean; data: any }>(
       `/invoices/analytics${params ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
+
+  download: (id: string) =>
+    apiRequest<{ success: boolean; data: { pdfUrl: string }; message: string }>(
+      `/invoices/${id}/download`
+    ),
+
+  delete: (id: string) =>
+    apiRequest<{ success: boolean; message: string }>(`/invoices/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Signup API

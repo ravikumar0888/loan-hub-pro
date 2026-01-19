@@ -8,25 +8,27 @@ datasource db {
 }
 
 model Organization {
-  id          String             @id @default(uuid())
-  name        String             @db.VarChar(255)
-  logo        String?
-  email       String             @unique @db.VarChar(255)
-  phone       String             @db.VarChar(15)
-  address     String
-  website     String?            @db.VarChar(255)
-  pricingTier PricingTier        @map("pricing_tier")
-  seats       Int
-  usedSeats   Int                @default(0) @map("used_seats")
-  status      OrganizationStatus @default(trial)
-  trialEndsAt DateTime?          @map("trial_ends_at")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
-  banks       Bank[]
-  customers   Customer[]
-  dsas        Dsa[]
-  invoices    Invoice[]
-  users       User[]
+  id            String             @id @default(uuid())
+  name          String             @db.VarChar(255)
+  logo          String?
+  email         String             @unique @db.VarChar(255)
+  phone         String             @db.VarChar(15)
+  address       String
+  website       String?            @db.VarChar(255)
+  pricingTier   PricingTier        @map("pricing_tier")
+  seats         Int
+  usedSeats     Int                @default(0) @map("used_seats")
+  monthlyAmount Decimal            @default(0) @map("monthly_amount") @db.Decimal(10, 2)
+  addons        Json?              @default("[]")
+  status        OrganizationStatus @default(trial)
+  trialEndsAt   DateTime?          @map("trial_ends_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+  banks         Bank[]
+  customers     Customer[]
+  dsas          Dsa[]
+  invoices      Invoice[]
+  users         User[]
 
   @@index([status])
   @@index([email])

@@ -60,6 +60,13 @@ export interface PaginationResult {
 
 // ==================== ORGANIZATION TYPES ====================
 
+export interface Addon {
+  id: string;
+  role: 'admin' | 'backoffice' | 'channel_partner';
+  quantity: number;
+  price: number;
+}
+
 export interface OrganizationQueryParams extends PaginationQuery {
   status?: OrganizationStatus;
   search?: string;
@@ -75,6 +82,8 @@ export interface CreateOrganizationDto {
   logo?: string;
   pricingTier: PricingTier;
   seats: number;
+  monthlyAmount: number; // Total billing amount including add-ons
+  addons?: Addon[]; // Add-ons configuration
   // Super admin details
   adminFirstName: string;
   adminLastName: string;
@@ -92,6 +101,8 @@ export interface UpdateOrganizationDto {
   logo?: string;
   pricingTier?: PricingTier;
   seats?: number;
+  monthlyAmount?: number; // Total billing amount including add-ons
+  addons?: Addon[]; // Add-ons configuration
   status?: OrganizationStatus;
   // Super admin updates (optional)
   adminFirstName?: string;

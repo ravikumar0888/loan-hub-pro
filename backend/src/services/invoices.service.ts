@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { PAGINATION_DEFAULTS } from '../config/constants';
 import { InvoiceQueryParams, CreateInvoiceDto } from '../types';
+import { InvoicePdfGenerator } from '../utils/invoicePdfGenerator';
 
 export class InvoicesService {
   /**
@@ -122,14 +123,8 @@ export class InvoicesService {
       throw new Error('Organization not found');
     }
 
-    // Calculate amount based on pricing tier
-    const pricePerSeat: Record<string, number> = {
-      starter: 499,
-      professional: 899,
-      enterprise: 1499,
-    };
-
-    const amount = pricePerSeat[organization.pricingTier] * organization.seats;
+    // Use the organization's monthly amount (includes base plan + add-ons)
+    const amount = organization.monthlyAmount;
     const invoiceNumber = await this.generateInvoiceNumber();
 
     const invoice = await prisma.invoice.create({
@@ -138,7 +133,7 @@ export class InvoicesService {
         organizationId: data.organizationId,
         amount,
         seats: organization.seats,
-        pricePerSeat: pricePerSeat[organization.pricingTier],
+        pricePerSeat: amount, // Store the same amount for compatibility
         billingPeriodStart: data.billingPeriodStart,
         billingPeriodEnd: data.billingPeriodEnd,
         dueDate: data.dueDate,
@@ -230,5 +225,37 @@ export class InvoicesService {
         return acc;
       }, {} as Record<string, number>),
     };
+  }
+
+  /**
+   * Generate PDF for an invoice
+   */
+  async generateInvoicePDF(id: string, userRole?: string, organizationId?: string | null): Promise<string> {
+    // First, get the invoice with authorization check
+    const invoice = await this.getInvoiceById(id, userRole, organizationId);
+
+    // Generate PDF
+    const pdfPath = await InvoicePdfGenerator.generateInvoicePDF(invoice as any);
+
+    return pdfPath;
+  }
+
+  /**
+   * Delete invoice (master_admin only)
+   */
+  async deleteInvoice(id: string, userRole?: string, organizationId?: string | null): Promise<{ message: string }> {
+    if (userRole !== 'master_admin') {
+      throw new Error('Unauthorized: Only master admins can delete invoices');
+    }
+
+    // Get invoice to verify it exists and user has access
+    const invoice = await this.getInvoiceById(id, userRole, organizationId);
+
+    // Delete the invoice
+    await prisma.invoice.delete({
+      where: { id },
+    });
+
+    return { message: 'Invoice deleted successfully' };
   }
 }

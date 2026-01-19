@@ -52,12 +52,21 @@ export class DsaInvoiceController {
     try {
       const { dsaId, month, year, status } = req.query;
 
-      const invoices = await dsaInvoiceService.getInvoices({
-        dsaId: dsaId as string | undefined,
-        month: month as string | undefined,
-        year: year as string | undefined,
-        status: status as string | undefined,
-      });
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+
+      const invoices = await dsaInvoiceService.getInvoices(
+        {
+          dsaId: dsaId as string | undefined,
+          month: month as string | undefined,
+          year: year as string | undefined,
+          status: status as string | undefined,
+        },
+        req.user.userId,
+        req.user.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -76,7 +85,16 @@ export class DsaInvoiceController {
     try {
       const { id } = req.params;
 
-      const invoice = await dsaInvoiceService.getInvoiceById(id);
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+
+      const invoice = await dsaInvoiceService.getInvoiceById(
+        id,
+        req.user.userId,
+        req.user.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,
@@ -95,15 +113,24 @@ export class DsaInvoiceController {
     try {
       const { id } = req.params;
 
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+
       // Only Admin and SuperAdmin can delete invoices
-      if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
+      if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
         return res.status(403).json({
           success: false,
           error: 'Only administrators can delete invoices',
         });
       }
 
-      const result = await dsaInvoiceService.deleteInvoice(id);
+      const result = await dsaInvoiceService.deleteInvoice(
+        id,
+        req.user.userId,
+        req.user.role,
+        req.organizationId
+      );
 
       res.json({
         success: true,

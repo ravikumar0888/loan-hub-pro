@@ -42,6 +42,14 @@ export const resetPasswordSchema = z.object({
 
 // ==================== ORGANIZATION VALIDATORS ====================
 
+// Add-on schema
+const addonSchema = z.object({
+  id: z.string(),
+  role: z.enum(['admin', 'backoffice', 'channel_partner']),
+  quantity: z.number().int().min(1),
+  price: z.number().min(0),
+});
+
 export const signupSchema = z.object({
   // Organization details
   name: z.string().min(1, 'Organization name is required'),
@@ -54,6 +62,8 @@ export const signupSchema = z.object({
     errorMap: () => ({ message: 'Invalid pricing tier' }),
   }),
   seats: z.number().int().min(1, 'At least 1 seat required'),
+  monthlyAmount: z.number().min(0, 'Monthly amount must be positive'),
+  addons: z.array(addonSchema).optional(),
   // Super admin details
   adminFirstName: z.string().min(1, 'Admin first name is required'),
   adminLastName: z.string().min(1, 'Admin last name is required'),
@@ -71,6 +81,8 @@ export const updateOrganizationSchema = z.object({
   logo: z.string().optional(),
   pricingTier: z.enum(['starter', 'professional', 'enterprise']).optional(),
   seats: z.number().int().min(1).optional(),
+  monthlyAmount: z.number().min(0, 'Monthly amount must be positive').optional(),
+  addons: z.array(addonSchema).optional(),
   status: z.enum(['trial', 'active', 'suspended']).optional(),
 });
 

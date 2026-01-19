@@ -4,15 +4,15 @@ import { Organization, PricingPlan, PricingTier } from '@/types';
 import { organizationsApi } from '@/lib/api';
 import { useAuth } from './AuthContext';
 
-// Default Pricing Plans matching backend constants
+// Default Pricing Plans - pricePerSeat is actually the fixed package price
 export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'starter',
-    name: 'Starter',
+    name: 'Standard',
     tier: 'starter',
-    pricePerSeat: 499,
-    minSeats: 1,
-    maxSeats: 5,
+    pricePerSeat: 4999, // Fixed package price (not per seat)
+    minSeats: 14,
+    maxSeats: 14,
     features: [
       '1 Superadmin',
       '1 Admin',
@@ -33,14 +33,14 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'professional',
     name: 'Professional',
     tier: 'professional',
-    pricePerSeat: 899,
-    minSeats: 5,
-    maxSeats: 25,
+    pricePerSeat: 13999, // Fixed package price (not per seat)
+    minSeats: 66,
+    maxSeats: 66,
     features: [
       '1 Superadmin',
-      '2 Admins',
-      '4 Backoffice users',
-      '20 Connectors',
+      '5 Admins',
+      '10 Backoffice users',
+      '50 Connectors',
       'Advanced loan management',
       'Priority support',
       'Custom reports',
@@ -50,23 +50,23 @@ export const PRICING_PLANS: PricingPlan[] = [
     isPopular: true,
     userLimits: {
       superadmin: 1,
-      admin: 2,
-      backoffice: 4,
-      connector: 20,
+      admin: 5,
+      backoffice: 10,
+      connector: 50,
     },
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
     tier: 'enterprise',
-    pricePerSeat: 1499,
-    minSeats: 10,
-    maxSeats: null,
+    pricePerSeat: 8999, // Fixed package price (not per seat)
+    minSeats: 33,
+    maxSeats: 33,
     features: [
       '1 Superadmin',
-      '5 Admins (expandable)',
-      '10 Backoffice users (expandable)',
-      '50 Connectors (expandable)',
+      '2 Admins',
+      '5 Backoffice users',
+      '25 Connectors',
       'Full platform access',
       'Dedicated support',
       'Custom integrations',
@@ -76,9 +76,9 @@ export const PRICING_PLANS: PricingPlan[] = [
     ],
     userLimits: {
       superadmin: 1,
-      admin: 5,
-      backoffice: 10,
-      connector: 50,
+      admin: 2,
+      backoffice: 5,
+      connector: 25,
     },
     isCustomizable: true,
     addonPricing: {

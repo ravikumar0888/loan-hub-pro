@@ -28,13 +28,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Plus, FileText, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, FileText, Download, CheckCircle, Clock, AlertCircle, Trash2 } from 'lucide-react';
 import { InvoiceStatus } from '@/types';
 import { toast } from 'sonner';
 import { format, addDays } from 'date-fns';
+import { invoicesApi } from '@/lib/api';
 
 export default function BillingTab() {
-  const { invoices, createInvoice, updateInvoiceStatus } = useBilling();
+  const { invoices, createInvoice, updateInvoiceStatus, refetch } = useBilling();
   const { organizations, getPlanByTier } = useOrganization();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState('');
@@ -53,16 +54,18 @@ export default function BillingTab() {
       return;
     }
 
-    const amount = plan.pricePerSeat * org.seats;
+    // Backend will calculate the amount based on organization's pricing tier
     const today = new Date();
+    const billingPeriodStart = today;
+    const billingPeriodEnd = addDays(today, billingPeriodDays);
+    const dueDate = addDays(today, 15);
 
     try {
       await createInvoice({
         organizationId: org.id,
-        amount,
-        billingMonth: today.getMonth() + 1,
-        billingYear: today.getFullYear(),
-        dueDate: addDays(today, 15),
+        billingPeriodStart: billingPeriodStart.toISOString(),
+        billingPeriodEnd: billingPeriodEnd.toISOString(),
+        dueDate: dueDate.toISOString(),
       });
 
       toast.success('Invoice created successfully');
@@ -88,6 +91,37 @@ export default function BillingTab() {
       toast.warning('Invoice marked as overdue');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update invoice status');
+    }
+  };
+
+  const handleDownloadInvoice = async (invoiceId: string) => {
+    try {
+      toast.loading('Generating PDF...');
+      const response = await invoicesApi.download(invoiceId);
+      toast.dismiss();
+
+      // Open PDF in new tab
+      const pdfUrl = `http://localhost:5000${response.data.pdfUrl}`;
+      window.open(pdfUrl, '_blank');
+
+      toast.success('Invoice downloaded successfully');
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error(error.message || 'Failed to download invoice');
+    }
+  };
+
+  const handleDeleteInvoice = async (invoice: any) => {
+    if (!confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await invoicesApi.delete(invoice.id);
+      toast.success('Invoice deleted successfully');
+      refetch(); // Refresh the invoices list
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete invoice');
     }
   };
 
@@ -159,7 +193,7 @@ export default function BillingTab() {
                     <div>
                       <p className="font-medium">{invoice.organizationName}</p>
                       <p className="text-sm text-muted-foreground">
-                        {invoice.seats} seats × ₹{invoice.pricePerSeat}
+                        Fixed plan - {invoice.seats} users included
                       </p>
                     </div>
                   </TableCell>
@@ -195,8 +229,22 @@ export default function BillingTab() {
                           </Button>
                         </>
                       )}
-                      <Button variant="ghost" size="icon">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDownloadInvoice(invoice.id)}
+                        title="Download Invoice PDF"
+                      >
                         <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteInvoice(invoice)}
+                        title="Delete Invoice"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -260,19 +308,26 @@ export default function BillingTab() {
                       <span className="font-medium">{plan.name}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Seats</span>
-                      <span className="font-medium">{org.seats}</span>
+                      <span className="text-muted-foreground">Users Included</span>
+                      <span className="font-medium">{org.seats} users</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Price per seat</span>
-                      <span className="font-medium">₹{plan.pricePerSeat}</span>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>• {plan.userLimits.superadmin} Superadmin</span>
+                      <span>• {plan.userLimits.admin} Admin</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>• {plan.userLimits.backoffice} Backoffice</span>
+                      <span>• {plan.userLimits.connector} Connector</span>
                     </div>
                     <div className="border-t pt-2 flex justify-between">
-                      <span className="font-medium">Total</span>
+                      <span className="font-medium">Fixed Package Price</span>
                       <span className="font-bold text-primary">
-                        ₹{(plan.pricePerSeat * org.seats).toLocaleString()}
+                        ₹{plan.pricePerSeat.toLocaleString()}
                       </span>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      * Add-ons charged separately if configured
+                    </p>
                   </div>
                 );
               }

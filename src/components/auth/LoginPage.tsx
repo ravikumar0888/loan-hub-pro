@@ -261,16 +261,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-            {/* Create Organization Link */}
-            <div className="mt-6 text-center">
-              <p className="text-slate-400 text-sm">
-                Don't have an organization?{' '}
-                <Link to="/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
-                  Create one now
-                </Link>
-              </p>
-            </div>
           </div>
           
           {/* Footer */}

@@ -33,6 +33,12 @@ export class DsaInvoiceService {
         },
       },
       include: {
+        bank: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         dsa: {
           include: {
             bankDetails: {
@@ -45,11 +51,23 @@ export class DsaInvoiceService {
       },
     });
 
+    console.log(`\n=== DSA Invoice Commission Calculation ===`);
+    console.log(`DSA ID: ${dsaId}`);
+    console.log(`Period: ${month}/${year}`);
+    console.log(`Date Range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log(`Total Customers Found: ${customers.length}`);
+
     let totalCommission = 0;
+    let processedCount = 0;
+    let skippedCount = 0;
 
     // Calculate commission for each customer
     for (const customer of customers) {
-      if (!customer.dsa?.bankDetails) continue;
+      if (!customer.dsa?.bankDetails || customer.dsa.bankDetails.length === 0) {
+        console.log(`  ⚠️  Customer ${customer.name} (${customer.id}): No DSA bank details configured`);
+        skippedCount++;
+        continue;
+      }
 
       // Find matching bank detail for this customer's bank and loan type
       const bankDetail = customer.dsa.bankDetails.find(
@@ -60,8 +78,20 @@ export class DsaInvoiceService {
         // Calculate commission: (Loan Amount * Payout Ratio) / 100
         const commission = (Number(customer.loanAmount) * Number(bankDetail.payoutRatio)) / 100;
         totalCommission += commission;
+        processedCount++;
+        console.log(`  ✓ Customer: ${customer.name} | Bank: ${customer.bank?.name || 'N/A'} | Loan: ₹${customer.loanAmount} | Payout: ${bankDetail.payoutRatio}% | Commission: ₹${commission.toFixed(2)}`);
+      } else {
+        console.log(`  ⚠️  Customer ${customer.name} (${customer.id}): No matching payout config for Bank ID: ${customer.bankId}, Loan Type: ${customer.loanType}`);
+        console.log(`      Available configs:`, customer.dsa.bankDetails.map(bd => `Bank: ${bd.bankId}, Type: ${bd.loanType}, Payout: ${bd.payoutRatio}%`));
+        skippedCount++;
       }
     }
+
+    console.log(`\n--- Summary ---`);
+    console.log(`Processed: ${processedCount} customers`);
+    console.log(`Skipped: ${skippedCount} customers`);
+    console.log(`Total Commission: ₹${totalCommission.toFixed(2)}`);
+    console.log(`==========================================\n`);
 
     return totalCommission;
   }
@@ -215,23 +245,76 @@ export class DsaInvoiceService {
   /**
    * Get invoices with optional filters
    */
-  async getInvoices(filters: {
-    dsaId?: string;
-    month?: string;
-    year?: string;
-    status?: string;
-  }) {
+  async getInvoices(
+    filters: {
+      dsaId?: string;
+      month?: string;
+      year?: string;
+      status?: string;
+    },
+    userId: string,
+    userRole: string,
+    organizationId: string | null
+  ) {
     const where: any = {};
 
+    // Apply filters from query params
     if (filters.dsaId) where.dsaId = filters.dsaId;
     if (filters.month) where.period_month = parseInt(filters.month);
     if (filters.year) where.period_year = parseInt(filters.year);
     if (filters.status) where.status = filters.status;
 
+    // Multi-tenant filtering: Filter by organization via DSA relationship
+    if (userRole !== 'master_admin' && organizationId) {
+      where.dsa = {
+        organizationId: organizationId,
+      };
+    }
+
+    // Role-based filtering: Admin can only see invoices for DSAs with their customers
+    if (userRole === 'admin') {
+      // Find all DSA IDs where admin owns customers
+      const dsasWithOwnedCustomers = await prisma.customer.findMany({
+        where: {
+          leadOwner: userId,
+          dsaId: { not: null },
+        },
+        select: { dsaId: true },
+        distinct: ['dsaId'],
+      });
+
+      const dsaIds = dsasWithOwnedCustomers
+        .map((c) => c.dsaId)
+        .filter((id): id is string => id !== null);
+
+      if (dsaIds.length === 0) {
+        // Admin has no DSA customers, return empty array
+        return [];
+      }
+
+      // Restrict to only these DSA IDs
+      if (where.dsaId) {
+        // If already filtering by dsaId, check if admin has access
+        if (!dsaIds.includes(where.dsaId)) {
+          return [];
+        }
+      } else {
+        // Filter to only admin's DSAs
+        where.dsaId = { in: dsaIds };
+      }
+    }
+
     const invoices = await prisma.dsaInvoice.findMany({
       where,
       include: {
-        dsa: true,
+        dsa: {
+          select: {
+            id: true,
+            name: true,
+            gstin: true,
+            organizationId: true,
+          },
+        },
         issuedBy: {
           select: {
             id: true,
@@ -252,11 +335,30 @@ export class DsaInvoiceService {
   /**
    * Get a single invoice by ID
    */
-  async getInvoiceById(id: string) {
+  async getInvoiceById(
+    id: string,
+    userId: string,
+    userRole: string,
+    organizationId: string | null
+  ) {
     const invoice = await prisma.dsaInvoice.findUnique({
       where: { id },
       include: {
-        dsa: true,
+        dsa: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            gstin: true,
+            address: true,
+            city: true,
+            stateName: true,
+            stateCode: true,
+            pinCode: true,
+            email: true,
+            organizationId: true,
+          },
+        },
         issuedBy: {
           select: {
             id: true,
@@ -278,20 +380,41 @@ export class DsaInvoiceService {
       throw new Error('Invoice not found');
     }
 
+    // Multi-tenant check: Ensure invoice belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId) {
+      if (invoice.dsa.organizationId !== organizationId) {
+        throw new Error('Access denied: Invoice does not belong to your organization');
+      }
+    }
+
+    // Role-based access control: Admin can only view invoices for DSAs with their customers
+    if (userRole === 'admin') {
+      const hasAccess = await prisma.customer.findFirst({
+        where: {
+          leadOwner: userId,
+          dsaId: invoice.dsaId,
+        },
+      });
+
+      if (!hasAccess) {
+        throw new Error('Access denied: You do not own customers associated with this DSA');
+      }
+    }
+
     return invoice;
   }
 
   /**
    * Delete an invoice
    */
-  async deleteInvoice(id: string) {
-    const invoice = await prisma.dsaInvoice.findUnique({
-      where: { id },
-    });
-
-    if (!invoice) {
-      throw new Error('Invoice not found');
-    }
+  async deleteInvoice(
+    id: string,
+    userId: string,
+    userRole: string,
+    organizationId: string | null
+  ) {
+    // First check if user has access to this invoice
+    const invoice = await this.getInvoiceById(id, userId, userRole, organizationId);
 
     // Delete PDF file if exists
     if (invoice.pdfUrl) {
@@ -303,6 +426,7 @@ export class DsaInvoiceService {
       }
     }
 
+    // If getInvoiceById didn't throw, user has access
     await prisma.dsaInvoice.delete({
       where: { id },
     });

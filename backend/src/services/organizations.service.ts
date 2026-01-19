@@ -123,20 +123,21 @@ export class OrganizationsService {
    * Create organization with super admin (self-service signup)
    */
   async createOrganization(data: CreateOrganizationDto) {
-    // Validate pricing tier and seats
-    const tierLimits: Record<string, { min: number; max: number | null }> = {
-      starter: { min: 1, max: 5 },
-      professional: { min: 5, max: 25 },
-      enterprise: { min: 10, max: null },
+    // Validate pricing tier and fixed seat counts
+    const tierSeats: Record<string, number> = {
+      starter: 14,      // Standard: 1 Superadmin + 1 Admin + 2 Backoffice + 10 Connector
+      professional: 66, // Professional: 1 Superadmin + 5 Admin + 10 Backoffice + 50 Connector
+      enterprise: 33,   // Enterprise: 1 Superadmin + 2 Admin + 5 Backoffice + 25 Connector
     };
 
-    const limits = tierLimits[data.pricingTier];
-    if (!limits) {
+    const expectedSeats = tierSeats[data.pricingTier];
+    if (!expectedSeats) {
       throw new Error('Invalid pricing tier');
     }
 
-    if (data.seats < limits.min || (limits.max && data.seats > limits.max)) {
-      throw new Error(`Seats must be between ${limits.min} and ${limits.max || 'unlimited'} for ${data.pricingTier} plan`);
+    // Note: We're flexible with seats to allow for customization, but log if it differs
+    if (data.seats !== expectedSeats) {
+      console.log(`Warning: Seats (${data.seats}) differ from expected (${expectedSeats}) for ${data.pricingTier} plan`);
     }
 
     // Check if email already exists
@@ -186,6 +187,8 @@ export class OrganizationsService {
           pricingTier: data.pricingTier as any,
           seats: data.seats,
           usedSeats: 1, // Super admin counts as first user
+          monthlyAmount: data.monthlyAmount, // Store total billing amount
+          addons: data.addons || [], // Store add-ons configuration
           status: 'trial',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
         },
@@ -240,15 +243,21 @@ export class OrganizationsService {
       const tier = updates.pricingTier || currentOrg.pricingTier;
       const seats = updates.seats || currentOrg.seats;
 
-      const tierLimits: Record<string, { min: number; max: number | null }> = {
-        starter: { min: 1, max: 5 },
-        professional: { min: 5, max: 25 },
-        enterprise: { min: 10, max: null },
+      // Fixed seat counts for each tier
+      const tierSeats: Record<string, number> = {
+        starter: 14,      // Standard: 1 Superadmin + 1 Admin + 2 Backoffice + 10 Connector
+        professional: 66, // Professional: 1 Superadmin + 5 Admin + 10 Backoffice + 50 Connector
+        enterprise: 33,   // Enterprise: 1 Superadmin + 2 Admin + 5 Backoffice + 25 Connector
       };
 
-      const limits = tierLimits[tier];
-      if (seats < limits.min || (limits.max && seats > limits.max)) {
-        throw new Error(`Seats must be between ${limits.min} and ${limits.max || 'unlimited'} for ${tier} plan`);
+      const expectedSeats = tierSeats[tier];
+      if (!expectedSeats) {
+        throw new Error('Invalid pricing tier');
+      }
+
+      // Log warning if seats differ from expected (allow customization)
+      if (seats !== expectedSeats) {
+        console.log(`Warning: Seats (${seats}) differ from expected (${expectedSeats}) for ${tier} plan`);
       }
 
       // Check if current usedSeats exceeds new seats limit
