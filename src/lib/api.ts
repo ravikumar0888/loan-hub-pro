@@ -77,6 +77,12 @@ export const authApi = {
 
   getCurrentUser: () =>
     apiRequest<{ success: boolean; data: any }>('/auth/me'),
+
+  verifyPassword: (password: string) =>
+    apiRequest<{ success: boolean; message: string }>('/auth/verify-password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
 };
 
 // Users API

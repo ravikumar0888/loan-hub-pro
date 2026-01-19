@@ -81,20 +81,21 @@ export class NotificationsController {
   }
 
   /**
-   * Mark all notifications as read for the current user
+   * Remove all notifications for the current user
    */
   async markAllAsRead(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
       }
 
       await notificationsService.markAllAsRead(userId, req.organizationId || null);
 
       res.json({
         success: true,
-        message: 'All notifications marked as read',
+        message: 'All notifications removed',
       });
     } catch (error: any) {
       next(error);

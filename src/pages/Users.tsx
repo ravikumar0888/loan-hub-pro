@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, banksApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
 import {
   Pagination,
   PaginationContent,
@@ -43,7 +44,7 @@ import {
 
 const ITEMS_PER_PAGE = 15;
 
-export default function Users() {
+function Users() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { role: currentUserRole } = useAuth();
@@ -648,3 +649,5 @@ export default function Users() {
     </div>
   );
 }
+
+export default withAdminPasswordProtection(Users, 'users', 'User Management');

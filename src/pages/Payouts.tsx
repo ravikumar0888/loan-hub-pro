@@ -46,6 +46,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Wallet, TrendingUp, TrendingDown, FileText, Loader2 } from 'lucide-react';
+import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
 
 interface MonthlyPayoutData {
   month: number;
@@ -60,7 +61,7 @@ interface MonthlyPayoutData {
   entries: any[];
 }
 
-export default function Payouts() {
+function Payouts() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const [balances, setBalances] = useState<ConnectorBalanceWithUser[]>([]);
@@ -648,3 +649,5 @@ export default function Payouts() {
     </div>
   );
 }
+
+export default withAdminPasswordProtection(Payouts, 'payouts', 'Payouts');

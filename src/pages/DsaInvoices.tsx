@@ -36,8 +36,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, Download, Loader2, Plus, Trash2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
 
-export default function DsaInvoices() {
+function DsaInvoices() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -425,3 +426,5 @@ export default function DsaInvoices() {
     </div>
   );
 }
+
+export default withAdminPasswordProtection(DsaInvoices, 'dsa-invoices', 'DSA Invoices');

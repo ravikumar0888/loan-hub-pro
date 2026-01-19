@@ -159,4 +159,58 @@ export class AuthController {
       next(error);
     }
   }
+
+  /**
+   * Verify password for current authenticated user
+   * Used for admin password protection feature
+   */
+  async verifyPassword(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+        });
+      }
+
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          error: 'Password is required',
+        });
+      }
+
+      // Fetch user from database
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Verify password using bcrypt
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid password',
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Password verified',
+      });
+    } catch (error: any) {
+      console.error('Verify password error:', error);
+      next(error);
+    }
+  }
 }

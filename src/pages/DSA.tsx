@@ -37,8 +37,9 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dsasApi, banksApi } from '@/lib/api';
+import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
 
-export default function DSAPage() {
+function DSAPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -983,3 +984,5 @@ export default function DSAPage() {
     </div>
   );
 }
+
+export default withAdminPasswordProtection(DSAPage, 'dsa', 'Corporate DSA');

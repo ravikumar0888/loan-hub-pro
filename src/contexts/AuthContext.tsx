@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     removeAuthToken();
+    sessionStorage.removeItem('admin_password_verified_pages');
     setAuthState({
       user: null,
       isAuthenticated: false,

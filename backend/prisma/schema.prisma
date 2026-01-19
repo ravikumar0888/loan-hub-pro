@@ -111,6 +111,7 @@ model Customer {
   leadOwner           String?          @map("lead_owner")
   salesManager        String?          @map("sales_manager") @db.VarChar(255)
   status              LoanStatus
+  disbursementDate    DateTime?        @map("disbursement_date") @db.Date
   applicationDate     DateTime         @default(now()) @map("application_date") @db.Date
   createdAt           DateTime         @default(now()) @map("created_at")
   updatedAt           DateTime         @updatedAt @map("updated_at")
@@ -157,6 +158,7 @@ model Customer {
   organization        Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([applicationDate])
+  @@index([disbursementDate])
   @@index([bankId])
   @@index([connectorId])
   @@index([createdBy])

@@ -18,4 +18,13 @@ router.post('/login', (req, res, next) => authController.login(req, res, next));
  */
 router.get('/me', authenticate, (req, res, next) => authController.me(req, res, next));
 
+/**
+ * POST /api/auth/verify-password
+ * Verify password for current user (admin password protection)
+ * Requires authentication
+ */
+router.post('/verify-password', authenticate, (req, res, next) =>
+  authController.verifyPassword(req, res, next)
+);
+
 export default router;

@@ -28,6 +28,7 @@ import { LoanStatus } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi, usersApi, dsasApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
 
 const statusStyles: Record<LoanStatus, string> = {
   login: 'bg-primary/10 text-primary border-primary/20',
@@ -39,7 +40,7 @@ const statusStyles: Record<LoanStatus, string> = {
   drop: 'bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20',
 };
 
-export default function Reports() {
+function Reports() {
   const { toast } = useToast();
   const { role } = useAuth();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
@@ -433,3 +434,5 @@ export default function Reports() {
     </div>
   );
 }
+
+export default withAdminPasswordProtection(Reports, 'reports', 'Reports');

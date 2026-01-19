@@ -22,11 +22,12 @@ export class DsaInvoiceService {
     const endDate = new Date(year, month, 0, 23, 59, 59);
 
     // Find all disbursed customers for this DSA in the period
+    // Filter by disbursementDate (when customer status changed to 'disbursed')
     const customers = await prisma.customer.findMany({
       where: {
         dsaId,
         status: 'disbursed',
-        applicationDate: {
+        disbursementDate: {
           gte: startDate,
           lte: endDate,
         },

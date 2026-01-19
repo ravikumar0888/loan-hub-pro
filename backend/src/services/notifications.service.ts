@@ -108,21 +108,20 @@ export class NotificationsService {
   }
 
   /**
-   * Mark all notifications as read for a user
+   * Delete all notifications for a user (Mark all read removes all notifications)
    */
   async markAllAsRead(userId: string, organizationId: string | null) {
     const where: any = {
       userId,
-      isRead: false,
     };
 
     if (organizationId) {
       where.organizationId = organizationId;
     }
 
-    return prisma.notification.updateMany({
+    // Delete all notifications for this user
+    return prisma.notification.deleteMany({
       where,
-      data: { isRead: true },
     });
   }
 

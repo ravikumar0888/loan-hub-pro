@@ -392,6 +392,7 @@ export class CustomersService {
         leadOwner: data.leadOwner,
         salesManager: data.salesManager,
         status: data.status || 'login',
+        disbursementDate: data.status === 'disbursed' ? new Date() : undefined,
         organizationId: organizationId,
         createdBy: data.createdBy,
         remarks: data.remarks
@@ -566,6 +567,15 @@ export class CustomersService {
     if (data.leadOwner !== undefined) updateData.leadOwner = data.leadOwner;
     if (data.salesManager !== undefined) updateData.salesManager = data.salesManager;
     if (data.status) updateData.status = data.status;
+
+    // Handle disbursementDate based on status changes
+    if (data.status === 'disbursed' && customer.status !== 'disbursed') {
+      // Status changing TO 'disbursed' - set disbursement date
+      updateData.disbursementDate = new Date();
+    } else if (customer.status === 'disbursed' && data.status && data.status !== 'disbursed') {
+      // Status changing FROM 'disbursed' - clear disbursement date
+      updateData.disbursementDate = null;
+    }
 
     // Handle remarks - create new remark if provided
     if (data.remarks && data.remarks.trim()) {
