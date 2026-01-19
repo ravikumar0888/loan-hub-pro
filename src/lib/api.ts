@@ -111,6 +111,23 @@ export const usersApi = {
 
   getAdmins: () =>
     apiRequest<{ success: boolean; data: any[] }>('/users/admins'),
+
+  getLimitsStatus: () =>
+    apiRequest<{
+      success: boolean;
+      data: {
+        pricingTier: string;
+        organizationName: string;
+        limits: {
+          superadmin: { current: number; max: number };
+          admin: { current: number; max: number };
+          backoffice: { current: number; max: number };
+          connector: { current: number; max: number };
+        };
+        isCustomizable: boolean;
+        addonPricing: { connector: number; backoffice: number; admin: number } | null;
+      };
+    }>('/users/limits-status'),
 };
 
 // Banks API

@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, Users, Sparkles } from 'lucide-react';
+import { Check, Users, Sparkles, Crown, Shield, UserCog, UserCheck, Plus } from 'lucide-react';
 import { PricingPlan } from '@/types';
+import { Separator } from '@/components/ui/separator';
 
 export default function PricingTab() {
   const { organizations, calculateMonthlyBilling } = useOrganization();
@@ -50,8 +51,58 @@ export default function PricingTab() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ul className="space-y-3">
-                {plan.features.map((feature, i) => (
+              {/* User Limits Section */}
+              <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">User Limits</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-3.5 w-3.5 text-amber-500" />
+                    <span>{plan.userLimits.superadmin} Superadmin</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-3.5 w-3.5 text-blue-500" />
+                    <span>{plan.userLimits.admin} Admin{plan.userLimits.admin > 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <UserCog className="h-3.5 w-3.5 text-purple-500" />
+                    <span>{plan.userLimits.backoffice} Backoffice</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="h-3.5 w-3.5 text-green-500" />
+                    <span>{plan.userLimits.connector} Connectors</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Addon Pricing for Enterprise */}
+              {plan.isCustomizable && plan.addonPricing && (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-3.5 w-3.5 text-primary" />
+                    <p className="text-xs font-medium text-primary uppercase tracking-wide">Add-on Pricing</p>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Extra Connector</span>
+                      <span className="font-medium">₹{plan.addonPricing.connector}/month</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Extra Backoffice</span>
+                      <span className="font-medium">₹{plan.addonPricing.backoffice}/month</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Extra Admin</span>
+                      <span className="font-medium">₹{plan.addonPricing.admin}/month</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Features */}
+              <ul className="space-y-2">
+                {plan.features.filter(f => !f.includes('Superadmin') && !f.includes('Admin') && !f.includes('Backoffice') && !f.includes('Connector')).map((feature, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm">
                     <Check className="h-4 w-4 text-success flex-shrink-0" />
                     <span>{feature}</span>

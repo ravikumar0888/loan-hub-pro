@@ -13,6 +13,21 @@ export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed';
 // Pricing Tiers
 export type PricingTier = 'starter' | 'professional' | 'enterprise';
 
+// User limits per role for each pricing tier
+export interface UserLimits {
+  superadmin: number;
+  admin: number;
+  backoffice: number;
+  connector: number;
+}
+
+// Add-on pricing for Enterprise customization
+export interface AddonPricing {
+  connector: number;
+  backoffice: number;
+  admin: number;
+}
+
 export interface PricingPlan {
   id: string;
   name: string;
@@ -22,6 +37,9 @@ export interface PricingPlan {
   maxSeats: number | null;
   features: string[];
   isPopular?: boolean;
+  userLimits: UserLimits;
+  addonPricing?: AddonPricing; // Only for Enterprise
+  isCustomizable?: boolean; // Only for Enterprise
 }
 
 // Organization

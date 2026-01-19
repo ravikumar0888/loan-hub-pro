@@ -130,4 +130,25 @@ export class UsersController {
       next(error);
     }
   }
+
+  async getUserLimitsStatus(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.organizationId) {
+        res.status(400).json({
+          success: false,
+          message: 'Organization context required',
+        });
+        return;
+      }
+
+      const limitsStatus = await usersService.getUserLimitsStatus(req.organizationId);
+
+      res.json({
+        success: true,
+        data: limitsStatus,
+      });
+    } catch (error: any) {
+      next(error);
+    }
+  }
 }

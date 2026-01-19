@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import { hashPassword } from '../utils/password';
-import { PAGINATION_DEFAULTS } from '../config/constants';
+import { PAGINATION_DEFAULTS, PRICING_TIER_LIMITS } from '../config/constants';
 import { PaginationQuery, UserRole } from '../types';
 
 export class UsersService {
@@ -149,12 +149,79 @@ export class UsersService {
     return user;
   }
 
+  // Helper method to validate user limits based on pricing tier
+  private async validateUserLimits(organizationId: string, newUserRole: string) {
+    // Get the organization with its pricing tier
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { pricingTier: true, name: true },
+    });
+
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    const pricingTier = organization.pricingTier as keyof typeof PRICING_TIER_LIMITS;
+    const tierLimits = PRICING_TIER_LIMITS[pricingTier];
+
+    if (!tierLimits || !tierLimits.userLimits) {
+      return; // No limits defined, skip validation
+    }
+
+    // Map role to the limit key
+    const roleToLimitKey: Record<string, keyof typeof tierLimits.userLimits> = {
+      superadmin: 'superadmin',
+      admin: 'admin',
+      backoffice: 'backoffice',
+      connector: 'connector',
+    };
+
+    const limitKey = roleToLimitKey[newUserRole];
+    if (!limitKey) {
+      return; // Role not tracked, skip validation
+    }
+
+    const maxAllowed = tierLimits.userLimits[limitKey];
+
+    // Count current users of this role in the organization
+    const currentCount = await prisma.user.count({
+      where: {
+        organizationId,
+        role: newUserRole,
+        isActive: true,
+      },
+    });
+
+    if (currentCount >= maxAllowed) {
+      const roleDisplayName = newUserRole.charAt(0).toUpperCase() + newUserRole.slice(1);
+
+      // Check if Enterprise plan with customizable option
+      if (pricingTier === 'enterprise' && tierLimits.isCustomizable && tierLimits.addonPricing) {
+        const addonPrice = tierLimits.addonPricing[limitKey as keyof typeof tierLimits.addonPricing];
+        throw new Error(
+          `User limit reached: Your ${pricingTier} plan allows ${maxAllowed} ${roleDisplayName} users. ` +
+          `Current count: ${currentCount}. Contact support to add more users at ₹${addonPrice}/month each.`
+        );
+      }
+
+      throw new Error(
+        `User limit reached: Your ${pricingTier} plan allows maximum ${maxAllowed} ${roleDisplayName} users. ` +
+        `Current count: ${currentCount}. Please upgrade your plan to add more users.`
+      );
+    }
+  }
+
   async createUser(data: any, userId?: string, userRole?: string, organizationId?: string | null) {
     // Role-based validation: Admins can only create connector and backoffice users
     if (userRole === 'admin') {
       if (data.role !== 'connector' && data.role !== 'backoffice') {
         throw new Error('Forbidden - Admins can only create Connector and BackOffice users');
       }
+    }
+
+    // Validate user limits based on organization's pricing tier
+    if (organizationId && data.role !== 'master_admin') {
+      await this.validateUserLimits(organizationId, data.role);
     }
 
     // Check if email already exists
@@ -518,5 +585,45 @@ export class UsersService {
     });
 
     return { message: 'Profile photo deleted successfully' };
+  }
+
+  // Get user counts by role for an organization
+  async getUserLimitsStatus(organizationId: string) {
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { pricingTier: true, name: true },
+    });
+
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    const pricingTier = organization.pricingTier as keyof typeof PRICING_TIER_LIMITS;
+    const tierLimits = PRICING_TIER_LIMITS[pricingTier];
+
+    if (!tierLimits || !tierLimits.userLimits) {
+      return null;
+    }
+
+    // Count users by role
+    const [superadminCount, adminCount, backofficeCount, connectorCount] = await Promise.all([
+      prisma.user.count({ where: { organizationId, role: 'superadmin', isActive: true } }),
+      prisma.user.count({ where: { organizationId, role: 'admin', isActive: true } }),
+      prisma.user.count({ where: { organizationId, role: 'backoffice', isActive: true } }),
+      prisma.user.count({ where: { organizationId, role: 'connector', isActive: true } }),
+    ]);
+
+    return {
+      pricingTier,
+      organizationName: organization.name,
+      limits: {
+        superadmin: { current: superadminCount, max: tierLimits.userLimits.superadmin },
+        admin: { current: adminCount, max: tierLimits.userLimits.admin },
+        backoffice: { current: backofficeCount, max: tierLimits.userLimits.backoffice },
+        connector: { current: connectorCount, max: tierLimits.userLimits.connector },
+      },
+      isCustomizable: pricingTier === 'enterprise' && tierLimits.isCustomizable,
+      addonPricing: pricingTier === 'enterprise' ? tierLimits.addonPricing : null,
+    };
   }
 }

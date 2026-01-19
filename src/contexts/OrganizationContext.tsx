@@ -14,11 +14,20 @@ export const PRICING_PLANS: PricingPlan[] = [
     minSeats: 1,
     maxSeats: 5,
     features: [
-      'Up to 5 users',
+      '1 Superadmin',
+      '1 Admin',
+      '2 Backoffice users',
+      '10 Connectors',
       'Basic loan management',
       'Email support',
       'Standard reports',
     ],
+    userLimits: {
+      superadmin: 1,
+      admin: 1,
+      backoffice: 2,
+      connector: 10,
+    },
   },
   {
     id: 'professional',
@@ -28,7 +37,10 @@ export const PRICING_PLANS: PricingPlan[] = [
     minSeats: 5,
     maxSeats: 25,
     features: [
-      'Up to 25 users',
+      '1 Superadmin',
+      '2 Admins',
+      '4 Backoffice users',
+      '20 Connectors',
       'Advanced loan management',
       'Priority support',
       'Custom reports',
@@ -36,6 +48,12 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Multi-bank integration',
     ],
     isPopular: true,
+    userLimits: {
+      superadmin: 1,
+      admin: 2,
+      backoffice: 4,
+      connector: 20,
+    },
   },
   {
     id: 'enterprise',
@@ -45,7 +63,10 @@ export const PRICING_PLANS: PricingPlan[] = [
     minSeats: 10,
     maxSeats: null,
     features: [
-      'Unlimited users',
+      '1 Superadmin',
+      '5 Admins (expandable)',
+      '10 Backoffice users (expandable)',
+      '50 Connectors (expandable)',
       'Full platform access',
       'Dedicated support',
       'Custom integrations',
@@ -53,6 +74,18 @@ export const PRICING_PLANS: PricingPlan[] = [
       'SLA guarantee',
       'Onboarding assistance',
     ],
+    userLimits: {
+      superadmin: 1,
+      admin: 5,
+      backoffice: 10,
+      connector: 50,
+    },
+    isCustomizable: true,
+    addonPricing: {
+      connector: 100,    // ₹100 per additional connector
+      backoffice: 200,   // ₹200 per additional backoffice user
+      admin: 500,        // ₹500 per additional admin user
+    },
   },
 ];
 
