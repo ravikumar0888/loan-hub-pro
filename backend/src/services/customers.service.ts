@@ -204,6 +204,13 @@ export class CustomersService {
               name: true,
             },
           },
+          creator: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
           remarks: {
             include: {
               users: {
@@ -350,7 +357,7 @@ export class CustomersService {
       return new Date(dateStr);
     };
 
-    const customer = await prisma.customer.create({
+    let customer = await prisma.customer.create({
       data: {
         applicationId: data.applicationId,
         applicationDate: parseDate(data.applicationDate) || new Date(),
@@ -560,7 +567,7 @@ export class CustomersService {
     if (data.loanAmount) updateData.loanAmount = data.loanAmount;
     if (data.caseType !== undefined) updateData.caseType = data.caseType;
     if (data.location !== undefined) updateData.location = data.location;
-    if (data.subventionAmount !== undefined) updateData.subventionAmount = data.subventionAmount;
+    if (data.subventionAmount !== undefined) updateData.subventionAmount = data.subventionAmount === null ? null : data.subventionAmount;
     if (data.connectorId !== undefined) updateData.connectorId = data.connectorId;
     if (data.dsaId !== undefined) updateData.dsaId = data.dsaId;
     if (data.bankId !== undefined) updateData.bankId = data.bankId;
@@ -615,7 +622,7 @@ export class CustomersService {
       }
     }
 
-    const updatedCustomer = await prisma.customer.update({
+    let updatedCustomer = await prisma.customer.update({
       where: { id },
       data: updateData,
       include: {
@@ -652,11 +659,17 @@ export class CustomersService {
       },
     });
 
-    // Regenerate payout if subvention changed on disbursed customer
-    if (customer.status === 'disbursed' && data.subventionAmount !== undefined && data.subventionAmount !== customer.subventionAmount) {
+    // Regenerate payout if subvention or loanAmount changed on disbursed customer
+    const subventionChanged = data.subventionAmount !== undefined &&
+      (data.subventionAmount === null ? null : Number(data.subventionAmount)) !==
+      (customer.subventionAmount === null ? null : Number(customer.subventionAmount));
+    const loanAmountChanged = data.loanAmount !== undefined &&
+      Number(data.loanAmount) !== Number(customer.loanAmount);
+
+    if (customer.status === 'disbursed' && (subventionChanged || loanAmountChanged)) {
       try {
         await this.payoutsService.generatePayoutForDisbursedCustomer(id);
-        console.log(`[INFO] Regenerated payout entry for customer ${id} due to subvention change`);
+        console.log(`[INFO] Regenerated payout entry for customer ${id} due to ${subventionChanged ? 'subvention' : 'loan amount'} change`);
       } catch (error) {
         console.error(`[ERROR] Failed to regenerate payout for customer ${id}:`, error);
         // Don't fail the update if payout generation fails

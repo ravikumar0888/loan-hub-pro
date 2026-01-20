@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { LoanStatus } from '@/types';
 import { useQuery } from '@tanstack/react-query';
-import { reportsApi, usersApi, dsasApi } from '@/lib/api';
+import { reportsApi, usersApi, dsasApi, banksApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
 
@@ -49,6 +49,7 @@ function Reports() {
   });
   const [selectedDSA, setSelectedDSA] = useState<string>('all');
   const [selectedConnector, setSelectedConnector] = useState<string>('all');
+  const [selectedBank, setSelectedBank] = useState<string>('all');
 
   // Table search, filter, and pagination state
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,13 +59,14 @@ function Reports() {
 
   // Fetch report data from backend
   const { data: reportData, isLoading: isLoadingReport } = useQuery({
-    queryKey: ['reports', dateRange, selectedDSA, selectedConnector],
+    queryKey: ['reports', dateRange, selectedDSA, selectedConnector, selectedBank],
     queryFn: async () => {
       const params: any = {};
       if (dateRange.from) params.startDate = dateRange.from.toISOString();
       if (dateRange.to) params.endDate = dateRange.to.toISOString();
       if (selectedDSA !== 'all') params.dsaId = selectedDSA;
       if (selectedConnector !== 'all') params.connectorId = selectedConnector;
+      if (selectedBank !== 'all') params.bankId = selectedBank;
 
       const response = await reportsApi.generateReport(params);
       return response.data;
@@ -89,8 +91,18 @@ function Reports() {
     },
   });
 
+  // Fetch Banks for dropdown
+  const { data: banksData } = useQuery({
+    queryKey: ['banks'],
+    queryFn: async () => {
+      const response = await banksApi.getAllBanks();
+      return response.data;
+    },
+  });
+
   const connectors = connectorsData || [];
   const dsas = dsasData || [];
+  const banks = banksData || [];
   const reportList = reportData || [];
 
   // Client-side search and status filtering
@@ -124,6 +136,7 @@ function Reports() {
       if (dateRange.to) params.endDate = dateRange.to.toISOString();
       if (selectedDSA !== 'all') params.dsaId = selectedDSA;
       if (selectedConnector !== 'all') params.connectorId = selectedConnector;
+      if (selectedBank !== 'all') params.bankId = selectedBank;
 
       // Call backend export API to get CSV with all financial calculations
       const blob = await reportsApi.exportReport(params);
@@ -166,6 +179,7 @@ function Reports() {
     });
     setSelectedDSA('all');
     setSelectedConnector('all');
+    setSelectedBank('all');
     setSearchQuery('');
     setStatusFilter('all');
     setCurrentPage(1);
@@ -199,10 +213,27 @@ function Reports() {
           Filters
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
           <div className="space-y-2">
             <Label>Date Range</Label>
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Bank</Label>
+            <Select value={selectedBank} onValueChange={setSelectedBank}>
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="All Banks" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border">
+                <SelectItem value="all">All Banks</SelectItem>
+                {banks.map((bank: any) => (
+                  <SelectItem key={bank.id} value={bank.id}>
+                    {bank.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -328,9 +359,9 @@ function Reports() {
                   <TableHead>Payout</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>DSA</TableHead>
+                  <TableHead>Bank Name</TableHead>
                   <TableHead>Channel Partner</TableHead>
                   <TableHead>Lead Owner</TableHead>
-                  <TableHead>Sales Manager</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -387,10 +418,12 @@ function Reports() {
                         {customer.dsa?.name || '-'}
                       </TableCell>
                       <TableCell className="text-sm">
+                        {customer.bank?.name || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm">
                         {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
                       </TableCell>
                       <TableCell className="text-sm">{customer.leadOwnerName || '-'}</TableCell>
-                      <TableCell className="text-sm">{customer.salesManagerName || '-'}</TableCell>
                     </TableRow>
                   ))
                 )}

@@ -60,6 +60,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
   const showDSAColumn = role !== 'connector';
   const showConnectorColumn = role !== 'connector';
 
+  // Show Lead Created By column only for superadmin and admin
+  const showCreatedByColumn = role === 'superadmin' || role === 'admin';
+
   // Function to mask phone number for backoffice (show XXXXXX for first 6 digits)
   const maskPhoneNumber = (phone: string) => {
     if (role === 'backoffice' && phone && phone.length === 10) {
@@ -128,7 +131,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
               {showPayoutColumn && <TableHead>Payout</TableHead>}
               <TableHead>Status</TableHead>
               {showDSAColumn && <TableHead>DSA</TableHead>}
+              <TableHead>Bank Name</TableHead>
               {showConnectorColumn && <TableHead>Channel Partner</TableHead>}
+              {showCreatedByColumn && <TableHead>Lead Created By</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -136,7 +141,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
             {paginatedCustomers.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9 + (showPayoutColumn ? 1 : 0) + (showDSAColumn ? 1 : 0) + (showConnectorColumn ? 1 : 0)}
+                  colSpan={10 + (showPayoutColumn ? 1 : 0) + (showDSAColumn ? 1 : 0) + (showConnectorColumn ? 1 : 0) + (showCreatedByColumn ? 1 : 0)}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No customers found
@@ -194,9 +199,17 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
                       {customer.dsa?.name || '-'}
                     </TableCell>
                   )}
+                  <TableCell className="text-sm">
+                    {customer.bank?.name || '-'}
+                  </TableCell>
                   {showConnectorColumn && (
                     <TableCell className="text-sm">
                       {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
+                    </TableCell>
+                  )}
+                  {showCreatedByColumn && (
+                    <TableCell className="text-sm">
+                      {customer.creator ? `${customer.creator.firstName} ${customer.creator.lastName}` : '-'}
                     </TableCell>
                   )}
                   <TableCell className="text-right">

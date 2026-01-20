@@ -196,6 +196,12 @@ export interface Customer {
     id: string;
     name: string;
   };
+  createdBy?: string;
+  creator?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
   leadOwner: string;
   salesManager?: string;
   // Status & Tracking

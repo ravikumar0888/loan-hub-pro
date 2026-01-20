@@ -41,6 +41,10 @@ export class ReportsService {
       where.dsaId = query.dsaId;
     }
 
+    if (query.bankId) {
+      where.bankId = query.bankId;
+    }
+
     if (query.status) {
       where.status = query.status;
     }
@@ -190,6 +194,10 @@ export class ReportsService {
 
     if (query.dsaId) {
       where.dsaId = query.dsaId;
+    }
+
+    if (query.bankId) {
+      where.bankId = query.bankId;
     }
 
     if (query.status) {

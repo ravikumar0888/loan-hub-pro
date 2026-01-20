@@ -155,6 +155,36 @@ export default function CustomerFormDialog({
     return banks.filter((bank: any) => dsaBankIds.includes(bank.id));
   }, [formData.dsaId, dsas, banks]);
 
+  // Calculate payout dynamically based on loan amount, subvention, connector, bank, and loan type
+  const calculatedPayout = React.useMemo(() => {
+    if (!formData.connectorId || !formData.bankId || !formData.loanType || !formData.loanAmount) {
+      return null;
+    }
+
+    const loanAmount = Number(formData.loanAmount);
+    if (loanAmount <= 0) return null;
+
+    // Find the selected connector
+    const selectedConnector = connectors.find((c: any) => c.id === formData.connectorId);
+    if (!selectedConnector?.userBankDetails || selectedConnector.userBankDetails.length === 0) {
+      return null;
+    }
+
+    // Find matching payout ratio for selected bank and loan type
+    const matchingDetail = selectedConnector.userBankDetails.find(
+      (bd: any) => bd.bankId === formData.bankId && bd.loanType === formData.loanType
+    );
+
+    if (!matchingDetail) return null;
+
+    const payoutRatio = Number(matchingDetail.payoutRatio);
+    const subvention = formData.hasSubvention && formData.subventionAmount ? Number(formData.subventionAmount) : 0;
+
+    // Calculate: (loanAmount × payoutRatio%) - subventionAmount
+    const payout = (loanAmount * payoutRatio / 100) - subvention;
+    return payout;
+  }, [formData.connectorId, formData.bankId, formData.loanType, formData.loanAmount, formData.hasSubvention, formData.subventionAmount, connectors]);
+
 
   useEffect(() => {
     if (customer && (mode === 'edit' || mode === 'view')) {
@@ -332,7 +362,7 @@ export default function CustomerFormDialog({
         tenure: formData.tenure || undefined,
         caseType: formData.caseType || undefined,
         location: formData.location || undefined,
-        subventionAmount: formData.hasSubvention && formData.subventionAmount ? Number(formData.subventionAmount) : undefined,
+        subventionAmount: formData.hasSubvention && formData.subventionAmount ? Number(formData.subventionAmount) : null,
         connectorId: formData.connectorId || undefined,
         dsaId: formData.dsaId || undefined,
         bankId: formData.bankId || undefined,
@@ -610,6 +640,25 @@ export default function CustomerFormDialog({
                     </div>
                   )}
                 </div>
+
+                {/* Calculated Payout Display */}
+                {(role === 'superadmin' || role === 'admin') && (
+                  <div className="space-y-2">
+                    <Label>Calculated Payout</Label>
+                    <div className={`p-3 rounded-md text-sm font-medium ${calculatedPayout !== null ? 'bg-success/10 text-success border border-success/20' : 'bg-muted text-muted-foreground'}`}>
+                      {calculatedPayout !== null ? (
+                        <>₹{Math.round(calculatedPayout).toLocaleString('en-IN')}</>
+                      ) : (
+                        <span className="text-xs">Select Channel Partner, Bank & Loan Type to calculate</span>
+                      )}
+                    </div>
+                    {calculatedPayout !== null && formData.hasSubvention && Number(formData.subventionAmount) > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        (After ₹{Number(formData.subventionAmount).toLocaleString('en-IN')} subvention deduction)
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Channel Partner *</Label>

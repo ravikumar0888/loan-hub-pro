@@ -459,6 +459,13 @@ export class UsersService {
         email: true,
         mobile: true,
         createdBy: true,
+        userBankDetails: {
+          select: {
+            bankId: true,
+            loanType: true,
+            payoutRatio: true,
+          },
+        },
       },
       orderBy: { firstName: 'asc' },
     });
