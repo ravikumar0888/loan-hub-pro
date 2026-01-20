@@ -31,6 +31,11 @@ interface OrganizationInvoiceData {
     phone: string;
     address: string;
     pricingTier: string;
+    addons?: Array<{
+      role: string;
+      quantity: number;
+      price: number;
+    }>;
   };
 }
 
@@ -167,7 +172,7 @@ export class InvoicePdfGenerator {
           .text('AMOUNT', 470, tableTop + 10, { width: 70, align: 'right' });
 
         // Table Content
-        const rowTop = tableTop + 45;
+        let rowTop = tableTop + 45;
 
         // Plan name mapping
         const planNames: Record<string, string> = {
@@ -176,6 +181,15 @@ export class InvoicePdfGenerator {
           enterprise: 'Enterprise',
         };
 
+        // Base plan pricing
+        const basePlanPrices: Record<string, number> = {
+          starter: 4999,
+          professional: 13999,
+          enterprise: 8999,
+        };
+        const basePlanPrice = basePlanPrices[invoice.organization.pricingTier] || Number(invoice.pricePerSeat);
+
+        // Base Plan Row
         doc
           .fontSize(10)
           .fillColor(darkColor)
@@ -183,61 +197,90 @@ export class InvoicePdfGenerator {
           .text('Subscription - Fixed Package', 60, rowTop)
           .text(planNames[invoice.organization.pricingTier] || invoice.organization.pricingTier, 280, rowTop, { width: 100, align: 'center' })
           .text(`${invoice.seats}`, 390, rowTop, { width: 70, align: 'center' })
-          .text(`Rs. ${formatCurrency(invoice.pricePerSeat)}`, 470, rowTop, { width: 70, align: 'right' });
+          .text(`Rs. ${formatCurrency(basePlanPrice)}`, 470, rowTop, { width: 70, align: 'right' });
 
-        // Draw line separator
+        rowTop += 25;
+
+        // Add-ons Rows (if any)
+        const addons = invoice.organization.addons || [];
+        if (addons.length > 0) {
+          const roleNames: Record<string, string> = {
+            admin: 'Admin',
+            backoffice: 'Back Office',
+            channel_partner: 'Channel Partner',
+          };
+
+          for (const addon of addons) {
+            doc
+              .fontSize(10)
+              .fillColor(grayColor)
+              .font('Helvetica')
+              .text(`Add-on: ${roleNames[addon.role] || addon.role}`, 60, rowTop)
+              .text(`${addon.quantity}`, 280, rowTop, { width: 100, align: 'center' })
+              .text(`@ Rs. ${addon.price}`, 390, rowTop, { width: 70, align: 'center' })
+              .text(`Rs. ${formatCurrency(addon.price * addon.quantity)}`, 470, rowTop, { width: 70, align: 'right' });
+            rowTop += 20;
+          }
+        }
+
+        // Draw line separator after items
+        rowTop += 10;
         doc
-          .moveTo(50, rowTop + 25)
-          .lineTo(545, rowTop + 25)
+          .moveTo(50, rowTop)
+          .lineTo(545, rowTop)
           .strokeColor('#e2e8f0')
           .stroke();
 
-        // Totals Section
-        const totalsTop = rowTop + 50;
+        // Totals Section - positioned relative to content
+        const totalsTop = rowTop + 20;
 
         doc
           .fontSize(10)
           .fillColor(grayColor)
           .font('Helvetica')
-          .text('Subtotal:', 400, totalsTop, { align: 'right' })
-          .text(`Rs. ${formatCurrency(invoice.amount)}`, 470, totalsTop, { width: 70, align: 'right' });
+          .text('Subtotal:', 350, totalsTop)
+          .text(`Rs. ${formatCurrency(Number(invoice.amount))}`, 470, totalsTop, { width: 70, align: 'right' });
 
         // Total (with background)
-        const totalTop = totalsTop + 30;
+        const totalTop = totalsTop + 25;
         doc
-          .rect(380, totalTop - 5, 165, 25)
+          .rect(340, totalTop - 5, 205, 25)
           .fillAndStroke(lightBg, '#e2e8f0');
 
         doc
           .fontSize(12)
           .fillColor(darkColor)
           .font('Helvetica-Bold')
-          .text('TOTAL:', 400, totalTop, { align: 'right' })
-          .text(`Rs. ${formatCurrency(invoice.amount)}`, 470, totalTop, { width: 70, align: 'right' });
+          .text('TOTAL:', 350, totalTop)
+          .text(`Rs. ${formatCurrency(Number(invoice.amount))}`, 470, totalTop, { width: 70, align: 'right' });
 
         // Payment Status
+        let statusTop = totalTop + 30;
         if (invoice.status === 'paid' && invoice.paidAt) {
           doc
             .fontSize(10)
             .fillColor('#22c55e')
             .font('Helvetica-Bold')
-            .text(`Paid on: ${format(invoice.paidAt, 'MMM dd, yyyy')}`, 400, totalTop + 30, { align: 'right' });
+            .text(`Paid on: ${format(invoice.paidAt, 'MMM dd, yyyy')}`, 350, statusTop);
+          statusTop += 20;
         } else if (invoice.status === 'pending') {
           doc
             .fontSize(10)
             .fillColor('#f59e0b')
             .font('Helvetica-Bold')
-            .text('Payment Pending', 400, totalTop + 30, { align: 'right' });
+            .text('Payment Pending', 350, statusTop);
+          statusTop += 20;
         } else if (invoice.status === 'overdue') {
           doc
             .fontSize(10)
             .fillColor('#ef4444')
             .font('Helvetica-Bold')
-            .text('Payment Overdue', 400, totalTop + 30, { align: 'right' });
+            .text('Payment Overdue', 350, statusTop);
+          statusTop += 20;
         }
 
-        // Notes Section
-        const notesTop = totalTop + 70;
+        // Notes Section - positioned dynamically
+        const notesTop = Math.max(statusTop + 30, 520);
         doc
           .fontSize(11)
           .fillColor(darkColor)
@@ -248,13 +291,13 @@ export class InvoicePdfGenerator {
           .fontSize(9)
           .fillColor(grayColor)
           .font('Helvetica')
-          .text('• This is a fixed package subscription invoice.', 50, notesTop + 20)
-          .text('• The package includes the specified number of user seats.', 50, notesTop + 35)
-          .text('• Add-ons, if any, will be billed separately.', 50, notesTop + 50)
-          .text('• Payment is due by the specified due date.', 50, notesTop + 65);
+          .text('• This is a fixed package subscription invoice.', 50, notesTop + 18)
+          .text('• The package includes the specified number of user seats.', 50, notesTop + 32)
+          .text('• Add-ons, if any, are included in the total amount.', 50, notesTop + 46)
+          .text('• Payment is due by the specified due date.', 50, notesTop + 60);
 
-        // Footer
-        const footerTop = 720;
+        // Footer - positioned at bottom of page
+        const footerTop = Math.max(notesTop + 100, 720);
         doc
           .moveTo(50, footerTop)
           .lineTo(545, footerTop)

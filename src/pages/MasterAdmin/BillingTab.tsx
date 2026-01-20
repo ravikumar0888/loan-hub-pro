@@ -193,7 +193,11 @@ export default function BillingTab() {
                     <div>
                       <p className="font-medium">{invoice.organizationName}</p>
                       <p className="text-sm text-muted-foreground">
-                        Fixed plan - {invoice.seats} users included
+                        {(() => {
+                          const org = organizations.find(o => o.id === invoice.organizationId);
+                          const plan = org ? getPlanByTier(org.pricingTier) : null;
+                          return plan ? `${plan.name} Plan` : 'Standard Plan';
+                        })()} • {invoice.seats} users
                       </p>
                     </div>
                   </TableCell>
@@ -277,11 +281,17 @@ export default function BillingTab() {
                   <SelectValue placeholder="Choose an organization" />
                 </SelectTrigger>
                 <SelectContent>
-                  {organizations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name} ({org.seats} seats)
-                    </SelectItem>
-                  ))}
+                  {organizations.map(org => {
+                    const plan = getPlanByTier(org.pricingTier);
+                    return (
+                      <SelectItem key={org.id} value={org.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{org.name}</span>
+                          <span className="text-muted-foreground">- {plan?.name || org.pricingTier}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -300,34 +310,62 @@ export default function BillingTab() {
             {selectedOrgId && (() => {
               const org = organizations.find(o => o.id === selectedOrgId);
               const plan = org ? getPlanByTier(org.pricingTier) : null;
+              const orgAddons = (org as any)?.addons || [];
+              const monthlyAmount = (org as any)?.monthlyAmount || plan?.pricePerSeat || 0;
+
               if (org && plan) {
                 return (
-                  <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Plan</span>
-                      <span className="font-medium">{plan.name}</span>
+                  <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                    {/* Organization Name & Plan Header */}
+                    <div className="border-b pb-3">
+                      <h3 className="text-lg font-semibold text-foreground">{org.name}</h3>
+                      <p className="text-sm text-muted-foreground">{org.email}</p>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Users Included</span>
-                      <span className="font-medium">{org.seats} users</span>
+
+                    {/* Plan Details */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Plan</span>
+                        <span className="font-medium">{plan.name}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Base Price</span>
+                        <span className="font-medium">₹{plan.pricePerSeat.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Users Included</span>
+                        <span className="font-medium">{org.seats} users</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground pl-2">
+                        <span>• {plan.userLimits.superadmin} Superadmin</span>
+                        <span>• {plan.userLimits.admin} Admin</span>
+                        <span>• {plan.userLimits.backoffice} Backoffice</span>
+                        <span>• {plan.userLimits.connector} Connector</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>• {plan.userLimits.superadmin} Superadmin</span>
-                      <span>• {plan.userLimits.admin} Admin</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>• {plan.userLimits.backoffice} Backoffice</span>
-                      <span>• {plan.userLimits.connector} Connector</span>
-                    </div>
-                    <div className="border-t pt-2 flex justify-between">
-                      <span className="font-medium">Fixed Package Price</span>
-                      <span className="font-bold text-primary">
-                        ₹{plan.pricePerSeat.toLocaleString()}
+
+                    {/* Add-ons Section */}
+                    {orgAddons.length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <span className="text-sm font-medium">Add-ons:</span>
+                        {orgAddons.map((addon: any, idx: number) => (
+                          <div key={idx} className="flex justify-between text-sm pl-2">
+                            <span className="text-muted-foreground">
+                              {addon.quantity}× {addon.role === 'channel_partner' ? 'Channel Partner' : addon.role.charAt(0).toUpperCase() + addon.role.slice(1)}
+                            </span>
+                            <span className="font-medium">₹{(addon.price * addon.quantity).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Total Amount */}
+                    <div className="border-t pt-3 flex justify-between items-center">
+                      <span className="text-lg font-semibold">Total Invoice Amount</span>
+                      <span className="text-2xl font-bold text-primary">
+                        ₹{Number(monthlyAmount).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      * Add-ons charged separately if configured
-                    </p>
                   </div>
                 );
               }
