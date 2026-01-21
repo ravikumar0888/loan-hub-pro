@@ -22,7 +22,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Download, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Customer, LoanType, LoanStatus, HomeType, CaseType, MaritalStatus } from '@/types';
+import { Customer, LoanType, LoanStatus, HomeType, CaseType, MaritalStatus, EmploymentType } from '@/types';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { usersApi, banksApi, dsasApi } from '@/lib/api';
@@ -53,6 +53,7 @@ const emptyFormData = {
   currentCompanyExperience: '',
   officialEmail: '',
   totalWorkExperience: '',
+  employmentType: '' as EmploymentType | '',
   companyAddress: '',
   currentAddress: '',
   postalAddress: '',
@@ -204,6 +205,7 @@ export default function CustomerFormDialog({
         currentCompanyExperience: customer.currentCompanyExperience || '',
         officialEmail: customer.officialEmail || '',
         totalWorkExperience: customer.totalWorkExperience || '',
+        employmentType: (customer as any).employmentType || '',
         companyAddress: (customer as any).companyAddress || '',
         currentAddress: customer.currentAddress || '',
         postalAddress: customer.postalAddress || '',
@@ -344,6 +346,7 @@ export default function CustomerFormDialog({
         totalWorkExperience: formData.totalWorkExperience || undefined,
         currentCompany: formData.currentCompany || undefined,
         currentCompanyExp: formData.currentCompanyExperience || undefined,
+        employmentType: formData.employmentType || undefined,
         companyAddress: formData.companyAddress || undefined,
         currentAddress: formData.currentAddress || undefined,
         postalAddress: formData.postalAddress || undefined,
@@ -785,6 +788,36 @@ export default function CustomerFormDialog({
             {/* Tab 3: Professional Details */}
             <TabsContent value="professional" className="space-y-4 min-h-[420px]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Employment Type</Label>
+                  {isReadOnly ? (
+                    <div className="p-2 bg-muted rounded-md text-sm capitalize">
+                      {formData.employmentType === 'salaried' ? 'Salaried' :
+                       formData.employmentType === 'self_employed' ? 'Self Employed' :
+                       formData.employmentType === 'professional' ? 'Professional' : '-'}
+                    </div>
+                  ) : (
+                    <RadioGroup
+                      value={formData.employmentType}
+                      onValueChange={(value) => setFormData({ ...formData, employmentType: value as EmploymentType })}
+                      className="flex gap-6"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="salaried" id="salaried" />
+                        <Label htmlFor="salaried" className="cursor-pointer">Salaried</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="self_employed" id="self_employed" />
+                        <Label htmlFor="self_employed" className="cursor-pointer">Self Employed</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="professional" id="professional" />
+                        <Label htmlFor="professional" className="cursor-pointer">Professional</Label>
+                      </div>
+                    </RadioGroup>
+                  )}
+                </div>
+
                 {renderField('currentCompany', 'Current Company', formData.currentCompany, (v) => setFormData({ ...formData, currentCompany: v }))}
 
                 {renderField('totalWorkExperience', 'Total Work Experience', formData.totalWorkExperience, (v) => setFormData({ ...formData, totalWorkExperience: v }), {

@@ -108,8 +108,8 @@ export default function LoginPage() {
               <Building2 className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white tracking-tight">LoanMS</h1>
-              <p className="text-sm text-slate-400">Loan Management System</p>
+              <h1 className="text-3xl font-bold text-white tracking-tight">FinConnect</h1>
+              <p className="text-sm text-slate-400">Simplifying Lending Eco Systems</p>
             </div>
           </div>
           
@@ -118,7 +118,7 @@ export default function LoginPage() {
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-sm text-primary font-medium">Trusted by 500+ DSAs</span>
+                <span className="text-sm text-primary font-medium">Trusted by 50+ DSAs</span>
               </div>
               <h2 className="text-5xl font-bold text-white leading-tight">
                 Simplify Your
@@ -127,7 +127,7 @@ export default function LoginPage() {
                 </span>
               </h2>
               <p className="text-lg text-slate-400 leading-relaxed">
-                Manage customers, track disbursements, and boost your lending business with our all-in-one platform.
+                Manage customers, Track Disbursements, and boost your lending business with our all-in-one platform.
               </p>
             </div>
 
@@ -177,8 +177,8 @@ export default function LoginPage() {
               <Building2 className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">LoanMS</h1>
-              <p className="text-sm text-slate-400">Management System</p>
+              <h1 className="text-2xl font-bold text-white">FINCONNECT</h1>
+              <p className="text-sm text-slate-400">Simplifying Lending Ecosystems</p>
             </div>
           </div>
           
@@ -265,7 +265,7 @@ export default function LoginPage() {
           
           {/* Footer */}
           <p className="text-center text-slate-500 text-sm mt-6">
-            © 2024 LoanMS. All rights reserved.
+            © 2024 FinConnect. All rights reserved.
           </p>
         </div>
       </div>

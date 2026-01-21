@@ -51,7 +51,6 @@ async function start() {
       console.log('  GET  /api/organizations - List organizations');
       console.log('  GET  /api/invoices - List invoices');
       console.log('  GET  /api/profile/me - Get profile');
-      console.log('  POST /api/chatbot/query - Chatbot query');
       console.log('\n⏳ Waiting for requests...\n');
     });
   } catch (error) {

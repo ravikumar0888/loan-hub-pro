@@ -104,8 +104,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
         {!collapsed && (
           <div className="animate-fade-in">
-            <h1 className="text-lg font-bold text-sidebar-foreground">LoanMS</h1>
-            <p className="text-xs text-sidebar-foreground/60">Management System</p>
+            <h1 className="text-lg font-bold text-sidebar-foreground">FinConnect</h1>
+            <p className="text-xs text-sidebar-foreground/60">Simplifying Lending Ecosystems</p>
           </div>
         )}
       </div>

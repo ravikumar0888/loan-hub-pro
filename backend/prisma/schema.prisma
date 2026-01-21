@@ -144,6 +144,7 @@ model Customer {
   reference2Name      String?          @map("reference2_name") @db.VarChar(255)
   spouseName          String?          @map("spouse_name") @db.VarChar(255)
   totalWorkExperience String?          @map("total_work_experience") @db.VarChar(50)
+  employmentType      String?          @map("employment_type") @db.VarChar(50)
   qualification       String?          @map("qualification") @db.VarChar(100)
   maritalStatus       String?          @map("marital_status") @db.VarChar(20)
   tenure              String?          @map("tenure") @db.VarChar(50)

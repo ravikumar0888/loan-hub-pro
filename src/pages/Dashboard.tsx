@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import KPICard from '@/components/dashboard/KPICard';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
@@ -16,21 +16,44 @@ import {
   TrendingDown,
 } from 'lucide-react';
 
+// Helper to get start of current month
+const getStartOfMonth = () => {
+  const date = new Date();
+  date.setDate(1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+// Helper to get end of today
+const getEndOfToday = () => {
+  const date = new Date();
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
 export default function Dashboard() {
   const { role, user } = useAuth();
+  // Default to current month (start of month to end of today)
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: new Date(),
-    to: new Date(),
+    from: getStartOfMonth(),
+    to: getEndOfToday(),
   });
 
   // Get current month and year for top performers
   const currentMonth = new Date().getMonth() + 1; // 1-12
   const currentYear = new Date().getFullYear();
 
+  // Create stable string-based query key for reliable cache invalidation
+  const dateRangeKey = useMemo(() => {
+    const fromStr = dateRange.from ? dateRange.from.toISOString().split('T')[0] : 'none';
+    const toStr = dateRange.to ? dateRange.to.toISOString().split('T')[0] : 'none';
+    return `${fromStr}_${toStr}`;
+  }, [dateRange.from, dateRange.to]);
+
   // Fetch KPI data from backend with date range
   // Backend automatically filters by role using authentication middleware
   const { data: kpiData, isLoading: isLoadingKPI } = useQuery({
-    queryKey: ['dashboard-kpis', dateRange, role],
+    queryKey: ['dashboard-kpis', dateRangeKey, role],
     queryFn: async () => {
       const params: any = {};
       if (dateRange.from) params.startDate = dateRange.from.toISOString();

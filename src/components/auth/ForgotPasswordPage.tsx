@@ -71,8 +71,8 @@ export default function ForgotPasswordPage() {
             <Building2 className="w-7 h-7 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">LoanMS</h1>
-            <p className="text-sm text-muted-foreground">Management System</p>
+            <h1 className="text-2xl font-bold text-foreground">FinConnect</h1>
+            <p className="text-sm text-muted-foreground">Simplifying Lending Ecosystems</p>
           </div>
         </div>
         

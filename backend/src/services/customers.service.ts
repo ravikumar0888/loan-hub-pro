@@ -144,6 +144,7 @@ export class CustomersService {
           currentCompany: true,
           current_company_exp: true,
           totalWorkExperience: true,
+          employmentType: true,
           qualification: true,
           maritalStatus: true,
           tenure: true,
@@ -372,6 +373,7 @@ export class CustomersService {
         currentCompany: data.currentCompany,
         current_company_exp: data.currentCompanyExp,
         totalWorkExperience: data.totalWorkExperience,
+        employmentType: data.employmentType,
         qualification: data.qualification,
         maritalStatus: data.maritalStatus,
         tenure: data.tenure,
@@ -547,6 +549,7 @@ export class CustomersService {
     if (data.currentCompany !== undefined) updateData.currentCompany = data.currentCompany;
     if (data.currentCompanyExp !== undefined) updateData.current_company_exp = data.currentCompanyExp;
     if (data.totalWorkExperience !== undefined) updateData.totalWorkExperience = data.totalWorkExperience;
+    if (data.employmentType !== undefined) updateData.employmentType = data.employmentType;
     if (data.qualification !== undefined) updateData.qualification = data.qualification;
     if (data.maritalStatus !== undefined) updateData.maritalStatus = data.maritalStatus;
     if (data.tenure !== undefined) updateData.tenure = data.tenure;

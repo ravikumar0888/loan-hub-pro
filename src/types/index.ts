@@ -10,6 +10,8 @@ export type CaseType = 'fresh' | 'bt' | 'bt_topup';
 
 export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed';
 
+export type EmploymentType = 'salaried' | 'self_employed' | 'professional';
+
 // Pricing Tiers
 export type PricingTier = 'starter' | 'professional' | 'enterprise';
 
@@ -157,6 +159,7 @@ export interface Customer {
   currentCompanyExperience?: string;
   officialEmail?: string;
   totalWorkExperience?: string;
+  employmentType?: EmploymentType;
   currentAddress?: string;
   postalAddress?: string;
   homeType?: HomeType;
