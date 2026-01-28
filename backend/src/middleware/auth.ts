@@ -6,16 +6,17 @@ import { verifyToken } from '../utils/jwt';
  * Authentication middleware
  * Verifies JWT token and attaches user info to request
  */
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'No token provided. Please login.',
       });
+      return;
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
@@ -32,7 +33,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
 
     next();
   } catch (error: any) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Invalid or expired token. Please login again.',
     });
@@ -44,19 +45,21 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
  * Checks if user has required role
  */
 export const authorize = (allowedRoles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Unauthorized. Please login.',
       });
+      return;
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Forbidden. Insufficient permissions.',
       });
+      return;
     }
 
     next();

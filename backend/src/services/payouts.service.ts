@@ -334,7 +334,7 @@ export class PayoutsService {
           throw new Error('Connector not found');
         }
         // Multi-tenant check
-        if (userRole !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
+        if ((userRole as string) !== 'master_admin' && organizationId && connector.organizationId !== organizationId) {
           throw new Error('Forbidden - Connector not found in your organization');
         }
         if (connector.createdBy !== userId) {
@@ -651,7 +651,7 @@ export class PayoutsService {
     }
 
     // Multi-tenant check: ensure ledger entry's connector belongs to user's organization
-    if (userRole !== 'master_admin' && organizationId && entry.connector.organizationId !== organizationId) {
+    if ((userRole as string) !== 'master_admin' && organizationId && entry.connector.organizationId !== organizationId) {
       throw new Error('Forbidden - Ledger entry not found in your organization');
     }
 

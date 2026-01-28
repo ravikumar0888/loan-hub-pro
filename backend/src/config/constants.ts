@@ -48,6 +48,7 @@ export const PRICING_TIER_LIMITS = {
 };
 
 export const TRIAL_PERIOD_DAYS = 14;
+export const PASSWORD_RESET_EXPIRY = 60 * 60 * 1000; // 1 hour in milliseconds
 
 export const USER_ROLES = {
   MASTER_ADMIN: 'master_admin',

@@ -56,8 +56,11 @@ export class PDFService {
         throw new Error('Customer not found');
       }
 
-      // Generate PDF buffer
-      const pdfBuffer = await PDFGenerator.generateCustomerPDF(customer);
+      // Generate PDF buffer - convert Decimal to number for PDF generation
+      const pdfBuffer = await PDFGenerator.generateCustomerPDF({
+        ...customer,
+        loanAmount: customer.loanAmount.toNumber(),
+      });
 
       // Ensure directory exists
       await this.ensureDirectory();

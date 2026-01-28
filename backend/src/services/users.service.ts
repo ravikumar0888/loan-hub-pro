@@ -11,8 +11,6 @@ export class UsersService {
 
     const where: any = {};
 
-    // Debug logging
-    console.log('[DEBUG] getUsers called with:', { query, userId, userRole, organizationId });
 
     // Multi-tenant filtering: filter by organizationId (except for master_admin)
     if (userRole !== 'master_admin' && organizationId) {
@@ -58,8 +56,6 @@ export class UsersService {
       }
     }
 
-    // Debug logging - show final where clause
-    console.log('[DEBUG] getUsers where clause:', JSON.stringify(where, null, 2));
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -89,10 +85,6 @@ export class UsersService {
       }),
       prisma.user.count({ where }),
     ]);
-
-    // Debug logging - show results
-    console.log('[DEBUG] getUsers results:', { total, returned: users.length });
-    console.log('[DEBUG] User IDs and createdBy:', users.map(u => ({ id: u.id, role: u.role, createdBy: u.createdBy })));
 
     return {
       data: users,
@@ -187,7 +179,7 @@ export class UsersService {
     const currentCount = await prisma.user.count({
       where: {
         organizationId,
-        role: newUserRole,
+        role: newUserRole as any,
         isActive: true,
       },
     });
@@ -196,8 +188,9 @@ export class UsersService {
       const roleDisplayName = newUserRole.charAt(0).toUpperCase() + newUserRole.slice(1);
 
       // Check if Enterprise plan with customizable option
-      if (pricingTier === 'enterprise' && tierLimits.isCustomizable && tierLimits.addonPricing) {
-        const addonPrice = tierLimits.addonPricing[limitKey as keyof typeof tierLimits.addonPricing];
+      const tierLimitsAny = tierLimits as any;
+      if (pricingTier === 'enterprise' && tierLimitsAny.isCustomizable && tierLimitsAny.addonPricing) {
+        const addonPrice = tierLimitsAny.addonPricing[limitKey];
         throw new Error(
           `User limit reached: Your ${pricingTier} plan allows ${maxAllowed} ${roleDisplayName} users. ` +
           `Current count: ${currentCount}. Contact support to add more users at ₹${addonPrice}/month each.`
@@ -433,9 +426,6 @@ export class UsersService {
   async getConnectors(userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = { role: 'connector', isActive: true };
 
-    // Debug logging
-    console.log('[DEBUG] getConnectors called with:', { userId, userRole, organizationId });
-
     // Multi-tenant filtering: filter by organizationId (except for master_admin)
     if (userRole !== 'master_admin' && organizationId) {
       where.organizationId = organizationId;
@@ -446,9 +436,6 @@ export class UsersService {
     if (userRole === 'admin' && userId) {
       where.createdBy = userId;
     }
-
-    // Debug logging - show final where clause
-    console.log('[DEBUG] getConnectors where clause:', JSON.stringify(where, null, 2));
 
     const connectors = await prisma.user.findMany({
       where,
@@ -469,10 +456,6 @@ export class UsersService {
       },
       orderBy: { firstName: 'asc' },
     });
-
-    // Debug logging - show results
-    console.log('[DEBUG] getConnectors results:', connectors.length, 'connectors found');
-    console.log('[DEBUG] Connector IDs and createdBy:', connectors.map(c => ({ id: c.id, createdBy: c.createdBy })));
 
     return connectors;
   }
@@ -629,8 +612,8 @@ export class UsersService {
         backoffice: { current: backofficeCount, max: tierLimits.userLimits.backoffice },
         connector: { current: connectorCount, max: tierLimits.userLimits.connector },
       },
-      isCustomizable: pricingTier === 'enterprise' && tierLimits.isCustomizable,
-      addonPricing: pricingTier === 'enterprise' ? tierLimits.addonPricing : null,
+      isCustomizable: pricingTier === 'enterprise' && (tierLimits as any).isCustomizable,
+      addonPricing: pricingTier === 'enterprise' ? (tierLimits as any).addonPricing : null,
     };
   }
 }

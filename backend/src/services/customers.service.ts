@@ -55,9 +55,6 @@ export class CustomersService {
 
     const where: any = {};
 
-    // Debug logging
-    console.log('[DEBUG] getCustomers called with:', { userId, userRole, organizationId });
-
     // Multi-tenant filtering: filter by organizationId (except for master_admin)
     if (userRole !== 'master_admin' && organizationId) {
       where.organizationId = organizationId;
@@ -115,9 +112,6 @@ export class CustomersService {
         where.applicationDate.lte = new Date(query.endDate);
       }
     }
-
-    // Debug logging - show final where clause
-    console.log('[DEBUG] Final where clause:', JSON.stringify(where, null, 2));
 
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
@@ -265,10 +259,6 @@ export class CustomersService {
         payout: payout,
       });
     });
-
-    // Debug logging - show results
-    console.log('[DEBUG] Query returned:', { total, returned: customers.length });
-    console.log('[DEBUG] Customer IDs and createdBy:', customers.map(c => ({ id: c.id, createdBy: c.createdBy, orgId: c.organizationId })));
 
     return {
       data: customersWithPayout,

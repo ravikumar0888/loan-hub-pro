@@ -4,13 +4,13 @@ import { Request, Response, NextFunction } from 'express';
 // ==================== VALIDATION MIDDLEWARE ====================
 
 export const validate = (schema: z.ZodSchema) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       schema.parse(req.body);
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Validation error',
           details: error.errors.map((err) => ({
@@ -18,6 +18,7 @@ export const validate = (schema: z.ZodSchema) => {
             message: err.message,
           })),
         });
+        return;
       }
       next(error);
     }

@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return false;
     } catch (error) {
-      console.error('Login error:', error);
+      // Error handled silently - no logging of sensitive data
       return false;
     }
   }, []);
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.forgotPassword(email);
       return response.success;
     } catch (error) {
-      console.error('Forgot password error:', error);
+      // Error handled silently
       return false;
     }
   }, []);
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.resetPassword(token, password);
       return response.success;
     } catch (error) {
-      console.error('Reset password error:', error);
+      // Error handled silently - no logging of sensitive data
       return false;
     }
   }, []);
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch (error) {
-      console.error('Refresh user error:', error);
+      // Error handled silently
     }
   }, []);
 

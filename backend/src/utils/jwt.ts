@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-productio
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 export const generateToken = (payload: AuthUser): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 };
 
 export const verifyToken = (token: string): AuthUser => {

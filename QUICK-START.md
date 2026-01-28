@@ -1,139 +1,191 @@
 # Quick Start Guide
 
-## 🚀 One-Command Setup (Recommended)
+Get the LoanMS application running in 5 minutes!
 
-Run this command in the `backend` folder:
+## Prerequisites
+
+- Node.js 18+ installed
+- PostgreSQL installed and running
+- Database password: `Rudransh@4240` (or your custom password)
+
+---
+
+## Local Development (5 Steps)
+
+### 1. Install Backend Dependencies
 
 ```bash
-cd backend
-complete-setup.bat
+cd F:\Rudvir\loan-hub-pro\backend
+npm install
 ```
 
-This will automatically:
-1. Run database migrations
-2. Generate Prisma client
-3. Create SuperAdmin account
+### 2. Setup Database
+
+```bash
+# Generate Prisma Client & Run Migrations
+npx prisma migrate dev
+
+# Create admin user
+npm run setup
+```
+
+**Login credentials created:**
+- Email: `superadmin@loanms.com`
+- Password: `Admin@123`
+
+### 3. Start Backend
+
+```bash
+npm run dev
+```
+
+Should show: `🚀 LoanMS Backend Server` on http://localhost:5000
+
+### 4. Install Frontend Dependencies (New Terminal)
+
+```bash
+cd F:\Rudvir\loan-hub-pro
+npm install
+```
+
+### 5. Start Frontend
+
+```bash
+npm run dev
+```
+
+### 6. Open Application
+
+Browser: **http://localhost:8080**
+
+Login with:
+- Email: `superadmin@loanms.com`
+- Password: `Admin@123`
+
+✅ **Done!** You're running locally.
 
 ---
 
-## 📧 SuperAdmin Login Credentials
+## Production Deployment (cPanel)
 
-After setup, login with:
+### Quick Steps:
 
-- **Email:** `superadmin@rudvir.com`
-- **Password:** `Admin@123`
+1. **Build locally:**
+   ```bash
+   # Backend
+   cd backend
+   npm install
+   npx prisma generate
+   npm run build
 
-⚠️ **Change this password immediately after first login!**
+   # Frontend
+   cd ..
+   npm run build
+   ```
+
+2. **Upload to server:**
+   - Backend files → `/home/kashton/dsaconnect.rudvirfinance.in/loan-hub-pro/backend/`
+   - Frontend dist → `/home/kashton/dsaconnect.rudvirfinance.in/`
+
+3. **Configure Node.js app in cPanel:**
+   - Application root: `dsaconnect.rudvirfinance.in/loan-hub-pro/backend`
+   - Startup file: `dist/index.js`
+   - Add environment variables (DATABASE_URL, JWT_SECRET, etc.)
+
+4. **Create .htaccess:**
+   - Location: `/home/kashton/dsaconnect.rudvirfinance.in/.htaccess`
+   - Use template from `.htaccess.example`
+
+5. **Start app:**
+   - cPanel → Setup Node.js App → Start
+
+**For detailed instructions, see:** `DEPLOYMENT-GUIDE.md`
 
 ---
 
-## 🎯 Manual Setup (If needed)
+## Common Issues & Fixes
 
-### Step 1: Database Migration
+### ❌ "Cannot find module 'date-fns'"
+
 ```bash
 cd backend
-npx prisma migrate dev --name add_profile_payout_dsa_invoice_fields
+npm install date-fns
+```
+
+### ❌ "Database connection failed"
+
+Update `DATABASE_URL` in `backend/.env`:
+```env
+DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/loanms?schema=public"
+```
+
+### ❌ "Port 5000 already in use"
+
+```bash
+# Windows
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+```
+
+### ❌ Prisma errors
+
+```bash
+cd backend
 npx prisma generate
-```
-
-### Step 2: Create SuperAdmin
-```bash
-npx ts-node create-superadmin.ts
+npx prisma migrate dev
 ```
 
 ---
 
-## 🏃 Starting the Application
+## File Checklist
 
-### Backend (Terminal 1)
-```bash
-cd backend
-npm run dev
-```
-Backend runs on: http://localhost:5000
+### Local Development ✅
+- [x] `backend/.env` - Backend config (DATABASE_URL, JWT_SECRET)
+- [x] `.env` - Frontend config (VITE_API_URL)
+- [x] PostgreSQL running
+- [x] Database created (`loanms`)
 
-### Frontend (Terminal 2)
-```bash
-npm run dev
-```
-Frontend runs on: http://localhost:8080
-
----
-
-## ✨ New Features Available
-
-### 1. **Profile Management**
-- Upload profile photo
-- Update personal info
-- Change password
-- Configure company details (GST info)
-- Dark/Light mode toggle
-
-### 2. **Payout PDF Generation**
-- SuperAdmin/Admin can download payout statements
-- One click per month
-- Professional formatted PDFs
-
-### 3. **DSA Company Details**
-- Add complete company information to DSAs
-- Address, GSTIN, State details
-- Used in invoice generation
-
-### 4. **DSA Invoice Generation**
-- Generate GST-compliant tax invoices
-- Automatic commission calculation
-- CGST/SGST breakdown
-- Professional invoice format
+### Production Deployment ✅
+- [x] `backend/.env.production` - Backend production config
+- [x] `.env.production` - Frontend production config
+- [x] Backend built (`dist` folder)
+- [x] Frontend built (`dist` folder)
+- [x] `.htaccess` file created
+- [x] Node.js app configured in cPanel
+- [x] Environment variables set in cPanel
 
 ---
 
-## 📋 What to Do After Login
+## Key URLs
 
-1. ✅ **Change Password** (Profile page)
-2. ✅ **Configure Company Details** (Profile page - for invoices)
-3. ✅ **Create Users** (Users page - Admin, BackOffice, Connector)
-4. ✅ **Add Banks** (Banks & NBFC page)
-5. ✅ **Setup DSAs** (Corporate DSA page - with company details)
-6. ✅ **Start Managing Loans** (Customers page)
+### Local:
+- Frontend: http://localhost:8080
+- Backend API: http://localhost:5000
+- Health check: http://localhost:5000/health
+- Prisma Studio: http://localhost:5555 (run `npx prisma studio`)
 
----
-
-## 🔧 Troubleshooting
-
-### Can't Login?
-Run superadmin setup again: `setup-superadmin.bat`
-
-### Database Error?
-Check PostgreSQL is running and `.env` is configured correctly
-
-### "Column does not exist" Error?
-Run migrations: `npx prisma migrate dev`
-
-### File Upload Fails?
-Directories are auto-created, but if issues persist, create manually:
-- `backend/public/uploads/profiles/`
-- `backend/public/pdfs/payouts/`
-- `backend/public/pdfs/invoices/`
+### Production:
+- Frontend: https://dsaconnect.rudvirfinance.in
+- Backend API: https://dsaconnect.rudvirfinance.in/api
+- Health check: https://dsaconnect.rudvirfinance.in/api/health
 
 ---
 
-## 📚 Documentation
+## Need Help?
 
-- **Full Setup Guide:** [SUPERADMIN-SETUP-GUIDE.md](SUPERADMIN-SETUP-GUIDE.md)
-- **Implementation Details:** [IMPLEMENTATION-COMPLETE.md](IMPLEMENTATION-COMPLETE.md)
-- **Database Schema:** `backend/prisma/schema.prisma`
-
----
-
-## 🎨 UI Theme
-
-The application now supports:
-- **Light Mode** ☀️
-- **Dark Mode** 🌙
-- **System** (auto-detect)
-
-Toggle in header or Profile page.
+1. **Local issues:** See `LOCAL-DEVELOPMENT.md`
+2. **Deployment issues:** See `DEPLOYMENT-GUIDE.md`
+3. **Backend logs:** Check terminal output or server logs
+4. **Frontend errors:** Check browser console (F12)
 
 ---
 
-**Ready to use! 🎉**
+## Next Steps
+
+- ✅ Application running locally
+- ✅ Create test data
+- ✅ Explore features
+- ✅ Make modifications
+- ✅ Deploy to production
+
+Happy coding! 🚀

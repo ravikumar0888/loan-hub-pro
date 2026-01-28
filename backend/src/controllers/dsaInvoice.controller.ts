@@ -7,24 +7,26 @@ export class DsaInvoiceController {
    * Generate a new DSA invoice
    * POST /api/dsa-invoices
    */
-  async generateInvoice(req: AuthRequest, res: Response, next: NextFunction) {
+  async generateInvoice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { dsaId, month, year } = req.body;
 
       // Validate required fields
       if (!dsaId || !month || !year) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'DSA ID, month, and year are required',
         });
+        return;
       }
 
       // Only Admin and SuperAdmin can generate invoices
       if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           error: 'Only administrators can generate invoices',
         });
+        return;
       }
 
       const invoice = await dsaInvoiceService.generateDsaInvoice(
@@ -48,12 +50,13 @@ export class DsaInvoiceController {
    * Get all invoices with optional filters
    * GET /api/dsa-invoices
    */
-  async getInvoices(req: AuthRequest, res: Response, next: NextFunction) {
+  async getInvoices(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { dsaId, month, year, status } = req.query;
 
       if (!req.user) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
       }
 
       const invoices = await dsaInvoiceService.getInvoices(
@@ -81,12 +84,13 @@ export class DsaInvoiceController {
    * Get a single invoice by ID
    * GET /api/dsa-invoices/:id
    */
-  async getInvoiceById(req: AuthRequest, res: Response, next: NextFunction) {
+  async getInvoiceById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
 
       if (!req.user) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
       }
 
       const invoice = await dsaInvoiceService.getInvoiceById(
@@ -109,20 +113,22 @@ export class DsaInvoiceController {
    * Delete an invoice
    * DELETE /api/dsa-invoices/:id
    */
-  async deleteInvoice(req: AuthRequest, res: Response, next: NextFunction) {
+  async deleteInvoice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
 
       if (!req.user) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
       }
 
       // Only Admin and SuperAdmin can delete invoices
       if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           error: 'Only administrators can delete invoices',
         });
+        return;
       }
 
       const result = await dsaInvoiceService.deleteInvoice(

@@ -188,7 +188,7 @@ export class OrganizationsService {
           seats: data.seats,
           usedSeats: 1, // Super admin counts as first user
           monthlyAmount: data.monthlyAmount, // Store total billing amount
-          addons: data.addons || [], // Store add-ons configuration
+          addons: (data.addons || []) as any, // Store add-ons configuration
           status: 'trial',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
         },

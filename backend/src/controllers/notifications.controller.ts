@@ -8,11 +8,12 @@ export class NotificationsController {
   /**
    * Get notifications for the current user
    */
-  async getNotifications(req: AuthRequest, res: Response, next: NextFunction) {
+  async getNotifications(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
@@ -36,11 +37,12 @@ export class NotificationsController {
   /**
    * Get unread notification count for the current user
    */
-  async getUnreadCount(req: AuthRequest, res: Response, next: NextFunction) {
+  async getUnreadCount(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
       }
 
       const count = await notificationsService.getUnreadCount(
@@ -60,11 +62,12 @@ export class NotificationsController {
   /**
    * Mark a single notification as read
    */
-  async markAsRead(req: AuthRequest, res: Response, next: NextFunction) {
+  async markAsRead(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user?.userId;
       if (!userId) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
       }
 
       const { id } = req.params;
@@ -83,7 +86,7 @@ export class NotificationsController {
   /**
    * Remove all notifications for the current user
    */
-  async markAllAsRead(req: AuthRequest, res: Response, next: NextFunction) {
+  async markAllAsRead(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user?.userId;
       if (!userId) {

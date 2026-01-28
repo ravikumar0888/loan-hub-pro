@@ -11,15 +11,16 @@ export class AuthController {
    * Login endpoint
    * Validates credentials and returns JWT token
    */
-  async login(req: Request, res: Response, next: NextFunction) {
+  async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Email and password are required',
         });
+        return;
       }
 
       // Find user by email
@@ -31,37 +32,41 @@ export class AuthController {
       });
 
       if (!user) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid email or password',
         });
+        return;
       }
 
       // Check if user is active
       if (!user.isActive) {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           error: 'Your account has been deactivated. Please contact support.',
         });
+        return;
       }
 
       // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
       if (!isPasswordValid) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid email or password',
         });
+        return;
       }
 
       // Check organization status (if not master_admin)
       if (user.role !== 'master_admin' && user.organization) {
         if (user.organization.status === 'suspended') {
-          return res.status(403).json({
+          res.status(403).json({
             success: false,
             error: 'Your organization subscription is suspended. Please contact billing.',
           });
+          return;
         }
       }
 
@@ -73,7 +78,7 @@ export class AuthController {
       });
 
       // Return user data and token
-      return res.json({
+      res.json({
         success: true,
         data: {
           token,
@@ -115,13 +120,14 @@ export class AuthController {
    * Get current authenticated user
    * Returns user data with organization info
    */
-  async me(req: AuthRequest, res: Response, next: NextFunction) {
+  async me(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Unauthorized',
         });
+        return;
       }
 
       // Fetch full user data with organization
@@ -141,10 +147,11 @@ export class AuthController {
       });
 
       if (!user) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'User not found',
         });
+        return;
       }
 
       res.json({
@@ -180,22 +187,24 @@ export class AuthController {
    * Verify password for current authenticated user
    * Used for admin password protection feature
    */
-  async verifyPassword(req: AuthRequest, res: Response, next: NextFunction) {
+  async verifyPassword(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Unauthorized',
         });
+        return;
       }
 
       const { password } = req.body;
 
       if (!password) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Password is required',
         });
+        return;
       }
 
       // Fetch user from database
@@ -204,23 +213,25 @@ export class AuthController {
       });
 
       if (!user) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'User not found',
         });
+        return;
       }
 
       // Verify password using bcrypt
       const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
       if (!isPasswordValid) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Invalid password',
         });
+        return;
       }
 
-      return res.json({
+      res.json({
         success: true,
         message: 'Password verified',
       });

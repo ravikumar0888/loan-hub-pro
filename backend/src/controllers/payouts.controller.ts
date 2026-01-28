@@ -32,15 +32,16 @@ export class PayoutsController {
   /**
    * Get monthly payout for a connector
    */
-  async getMonthlyPayout(req: AuthRequest, res: Response, next: NextFunction) {
+  async getMonthlyPayout(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { connectorId, month, year } = req.query;
 
       if (!connectorId || !month || !year) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'connectorId, month, and year are required',
         });
+        return;
       }
 
       const summary = await payoutsService.getMonthlyPayout(
@@ -182,15 +183,16 @@ export class PayoutsController {
   /**
    * Generate monthly payout PDF
    */
-  async generatePayoutPDF(req: AuthRequest, res: Response, next: NextFunction) {
+  async generatePayoutPDF(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { connectorId, month, year } = req.body;
 
       if (!connectorId || !month || !year) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'connectorId, month, and year are required',
         });
+        return;
       }
 
       const result = await payoutsService.generateMonthlyPayoutPDF(
