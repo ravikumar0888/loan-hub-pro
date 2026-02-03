@@ -48,24 +48,24 @@ export default function KPICard({
       )}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
-          <p className="text-3xl font-bold text-foreground">{value}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 truncate">{title}</p>
+          <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">{value}</p>
           {trend && (
             <p
               className={cn(
-                'text-sm mt-2',
+                'text-xs sm:text-sm mt-1 sm:mt-2',
                 trend.isPositive ? 'text-success' : 'text-destructive'
               )}
             >
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
-              <span className="text-muted-foreground ml-1">vs last month</span>
+              <span className="text-muted-foreground ml-1 hidden sm:inline">vs last month</span>
             </p>
           )}
         </div>
-        <div className={cn('p-3 rounded-xl', iconBgStyles[variant])}>
-          <Icon className="w-6 h-6" />
+        <div className={cn('p-2 sm:p-3 rounded-lg sm:rounded-xl flex-shrink-0', iconBgStyles[variant])}>
+          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
       </div>
     </div>

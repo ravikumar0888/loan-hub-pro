@@ -19,13 +19,25 @@ export default function DashboardLayout({ title = 'Dashboard', children }: Dashb
     return <Navigate to="/login" replace />;
   }
 
+  // Debug logging for menu state
+  React.useEffect(() => {
+    console.log('Mobile menu state:', mobileMenuOpen ? 'OPEN' : 'CLOSED');
+  }, [mobileMenuOpen]);
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-foreground/50 z-30 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 bg-foreground/50 z-30 lg:hidden cursor-pointer"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Overlay clicked - closing menu');
+            setMobileMenuOpen(false);
+          }}
+          role="button"
+          aria-label="Close menu"
         />
       )}
 
@@ -40,13 +52,14 @@ export default function DashboardLayout({ title = 'Dashboard', children }: Dashb
       {/* Sidebar - Mobile */}
       <div
         className={cn(
-          'lg:hidden fixed inset-y-0 left-0 z-40 transition-transform duration-300',
+          'lg:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300',
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <Sidebar
           collapsed={false}
           onToggle={() => setMobileMenuOpen(false)}
+          isMobile={true}
         />
       </div>
 
@@ -58,7 +71,7 @@ export default function DashboardLayout({ title = 'Dashboard', children }: Dashb
         )}
       >
         <Header title={title} onMenuClick={() => setMobileMenuOpen(true)} />
-        <main className="p-6">
+        <main className="p-3 sm:p-4 md:p-6">
           {children || <Outlet />}
         </main>
       </div>

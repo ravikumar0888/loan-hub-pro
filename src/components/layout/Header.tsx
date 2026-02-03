@@ -102,6 +102,8 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
 
   // Map role to display name
   const getRoleDisplayName = (role: string | undefined) => {
+    if (role === 'master_admin') return 'Master Admin';
+    if (role === 'superadmin') return 'Super Admin';
     if (role === 'connector') return 'Channel Partner';
     if (role === 'backoffice') return 'Back Office';
     return role?.replace(/^\w/, (c) => c.toUpperCase()) || '';
@@ -111,7 +113,7 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
   const headerTitle = displayName || title;
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-30">
+    <header className="h-14 sm:h-16 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 md:px-6 sticky top-0 z-30">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -122,7 +124,7 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
           <Menu className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-xl font-semibold text-foreground">{headerTitle}</h1>
+          <h1 className="text-base sm:text-lg md:text-xl font-semibold text-foreground truncate">{headerTitle}</h1>
         </div>
       </div>
 
@@ -197,8 +199,8 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 pl-2 pr-3">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold text-primary">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-xs sm:text-sm font-semibold text-primary">
                   {user?.firstName[0]}{user?.lastName[0]}
                 </span>
               </div>

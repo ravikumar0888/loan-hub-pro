@@ -147,37 +147,39 @@ export default function TopPerformersSection({
 
     return (
       <>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-20">Rank</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-center">Number of Loans</TableHead>
-              <TableHead className="text-right">Total Disbursement</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedData.map((item, index) => (
-              <TableRow
-                key={index}
-                className="table-row-hover"
-              >
-                <TableCell>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold">
-                    {startRank + index + 1}
-                  </div>
-                </TableCell>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell className="text-center">
-                  {item.count} {item.count === 1 ? 'loan' : 'loans'}
-                </TableCell>
-                <TableCell className="text-right font-semibold text-success">
-                  {formatCurrency(item.totalDisbursement)}
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-20">Rank</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="text-center">Number of Loans</TableHead>
+                <TableHead className="text-right">Total Disbursement</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paginatedData.map((item, index) => (
+                <TableRow
+                  key={index}
+                  className="table-row-hover"
+                >
+                  <TableCell>
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold">
+                      {startRank + index + 1}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
+                  <TableCell className="text-center whitespace-nowrap">
+                    {item.count} {item.count === 1 ? 'loan' : 'loans'}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-success whitespace-nowrap">
+                    {formatCurrency(item.totalDisbursement)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
 
         {/* Pagination - only show if more than 5 records */}
         {currentData.length > itemsPerPage && (

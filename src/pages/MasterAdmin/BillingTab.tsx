@@ -100,8 +100,14 @@ export default function BillingTab() {
       const response = await invoicesApi.download(invoiceId);
       toast.dismiss();
 
-      // Open PDF in new tab
-      const pdfUrl = `http://localhost:5000${response.data.pdfUrl}`;
+      // Construct proper PDF URL
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        baseUrl = `https://${baseUrl}`;
+      }
+      const pdfPath = response.data.pdfUrl.startsWith('/') ? response.data.pdfUrl : `/${response.data.pdfUrl}`;
+      const pdfUrl = `${baseUrl}${pdfPath}`;
       window.open(pdfUrl, '_blank');
 
       toast.success('Invoice downloaded successfully');

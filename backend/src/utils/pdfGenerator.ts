@@ -10,12 +10,18 @@ interface CustomerData {
   email?: string;
   motherName?: string;
   spouseName?: string;
+  maritalStatus?: string;
+  qualification?: string;
+  currentCompany?: string;
   currentCompanyExp?: string;
   officialEmail?: string;
   totalWorkExperience?: string;
+  employmentType?: string;
+  companyAddress?: string;
   currentAddress?: string;
   postalAddress?: string;
   homeType?: string;
+  location?: string;
   reference1Name?: string;
   reference1Mobile?: string;
   reference1Address?: string;
@@ -28,6 +34,7 @@ interface CustomerData {
   loanType: string;
   loanAmount: number;
   caseType?: string;
+  tenure?: string;
   status: string;
   connector?: {
     firstName: string;
@@ -136,15 +143,25 @@ export class PDFGenerator {
           { label: 'Email', value: customer.email },
           { label: 'Mother Name', value: customer.motherName },
           { label: 'Spouse Name', value: customer.spouseName },
+          { label: 'Marital Status', value: customer.maritalStatus },
+          { label: 'Qualification', value: customer.qualification },
         ]);
 
         // Professional Details
         addSection('Professional Details', [
+          { label: 'Employment Type', value: customer.employmentType },
+          { label: 'Current Company', value: customer.currentCompany },
           { label: 'Current Company Experience', value: customer.currentCompanyExp },
-          { label: 'Official Email', value: customer.officialEmail },
           { label: 'Total Work Experience', value: customer.totalWorkExperience },
+          { label: 'Official Email', value: customer.officialEmail },
+          { label: 'Company Address', value: customer.companyAddress },
+        ]);
+
+        // Address Details
+        addSection('Address Details', [
           { label: 'Current Address', value: customer.currentAddress },
           { label: 'Postal Address', value: customer.postalAddress },
+          { label: 'Location', value: customer.location },
           { label: 'Home Type', value: customer.homeType ? customer.homeType.replace('-', ' ').toUpperCase() : null },
         ]);
 
@@ -192,6 +209,7 @@ export class PDFGenerator {
           { label: 'Loan Type', value: loanTypeMap[customer.loanType] || customer.loanType },
           { label: 'Case Type', value: customer.caseType ? caseTypeMap[customer.caseType] : null },
           { label: 'Loan Amount', value: `Rs. ${customer.loanAmount.toLocaleString('en-IN')}` },
+          { label: 'Tenure', value: customer.tenure },
           { label: 'Bank', value: customer.bank?.name || null },
         ]);
 

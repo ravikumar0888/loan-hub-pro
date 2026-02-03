@@ -56,10 +56,48 @@ export class PDFService {
         throw new Error('Customer not found');
       }
 
-      // Generate PDF buffer - convert Decimal to number for PDF generation
+      // Generate PDF buffer - map fields to expected format for PDF generation
       const pdfBuffer = await PDFGenerator.generateCustomerPDF({
-        ...customer,
+        applicationId: customer.applicationId || undefined,
+        name: customer.name,
+        panNo: customer.panNo || undefined,
+        dateOfBirth: customer.date_of_birth || undefined,
+        mobile: customer.mobile,
+        email: customer.email || undefined,
+        motherName: customer.motherName || undefined,
+        spouseName: customer.spouseName || undefined,
+        maritalStatus: customer.maritalStatus || undefined,
+        qualification: customer.qualification || undefined,
+        currentCompany: customer.currentCompany || undefined,
+        currentCompanyExp: customer.current_company_exp || undefined,
+        officialEmail: customer.officialEmail || undefined,
+        totalWorkExperience: customer.totalWorkExperience || undefined,
+        employmentType: customer.employmentType || undefined,
+        companyAddress: customer.companyAddress || undefined,
+        currentAddress: customer.currentAddress || undefined,
+        postalAddress: customer.postalAddress || undefined,
+        homeType: customer.homeType || undefined,
+        location: customer.location || undefined,
+        reference1Name: customer.reference1Name || undefined,
+        reference1Mobile: customer.reference1Mobile || undefined,
+        reference1Address: customer.reference1Address || undefined,
+        reference2Name: customer.reference2Name || undefined,
+        reference2Mobile: customer.reference2Mobile || undefined,
+        reference2Address: customer.reference2Address || undefined,
+        nomineeName: customer.nomineeName || undefined,
+        nomineeRelation: customer.nomineeRelation || undefined,
+        nomineeDateOfBirth: customer.nomineeDateOfBirth || undefined,
+        loanType: customer.loanType,
         loanAmount: customer.loanAmount.toNumber(),
+        caseType: customer.caseType || undefined,
+        tenure: customer.tenure || undefined,
+        status: customer.status,
+        connector: customer.connector || undefined,
+        dsa: customer.dsa || undefined,
+        bank: customer.bank || undefined,
+        leadOwnerUser: customer.leadOwnerUser || undefined,
+        salesManager: customer.salesManager || undefined,
+        createdAt: customer.createdAt,
       });
 
       // Ensure directory exists

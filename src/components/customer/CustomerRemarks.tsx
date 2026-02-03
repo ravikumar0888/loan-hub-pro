@@ -105,8 +105,8 @@ export default function CustomerRemarks({ customerId }: CustomerRemarksProps) {
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
-                  {remark.user
-                    ? `${remark.user.firstName} ${remark.user.lastName}`
+                  {remark.users
+                    ? `${remark.users.firstName} ${remark.users.lastName}`
                     : 'Unknown User'}
                 </span>
                 <span>

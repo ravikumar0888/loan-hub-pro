@@ -77,7 +77,7 @@ function Reports() {
   const { data: connectorsData } = useQuery({
     queryKey: ['connectors'],
     queryFn: async () => {
-      const response = await usersApi.getConnectors();
+      const response = await usersApi.getConnectors({ limit: 10000 });
       return response.data;
     },
   });
@@ -86,7 +86,7 @@ function Reports() {
   const { data: dsasData } = useQuery({
     queryKey: ['dsas'],
     queryFn: async () => {
-      const response = await dsasApi.getDsas();
+      const response = await dsasApi.getDsas({ limit: 10000 });
       return response.data;
     },
   });

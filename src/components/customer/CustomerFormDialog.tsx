@@ -102,7 +102,7 @@ export default function CustomerFormDialog({
   const { data: connectorsData } = useQuery({
     queryKey: ['connectors'],
     queryFn: async () => {
-      const response = await usersApi.getConnectors();
+      const response = await usersApi.getConnectors({ limit: 10000 });
       return response.data;
     },
   });
@@ -431,7 +431,7 @@ export default function CustomerFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card">
+      <DialogContent className="w-full max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-card p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {mode === 'add' ? 'Add New Lead' : mode === 'edit' ? 'Edit Lead' : 'View Lead'}
@@ -440,13 +440,13 @@ export default function CustomerFormDialog({
 
         <form onSubmit={handleSubmit} className="mt-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 mb-6">
-              <TabsTrigger value="personal">Personal</TabsTrigger>
-              <TabsTrigger value="loan">Loan</TabsTrigger>
-              <TabsTrigger value="professional">Professional</TabsTrigger>
-              <TabsTrigger value="address">Address</TabsTrigger>
-              <TabsTrigger value="reference">Reference</TabsTrigger>
-              <TabsTrigger value="remarks">Remarks</TabsTrigger>
+            <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-6 mb-6 pb-2 sm:pb-0 gap-2 sm:gap-0 no-scrollbar max-w-full">
+              <TabsTrigger value="personal" className="flex-shrink-0">Personal</TabsTrigger>
+              <TabsTrigger value="loan" className="flex-shrink-0">Loan</TabsTrigger>
+              <TabsTrigger value="professional" className="flex-shrink-0">Professional</TabsTrigger>
+              <TabsTrigger value="address" className="flex-shrink-0">Address</TabsTrigger>
+              <TabsTrigger value="reference" className="flex-shrink-0">Reference</TabsTrigger>
+              <TabsTrigger value="remarks" className="flex-shrink-0">Remarks</TabsTrigger>
             </TabsList>
 
             {/* Tab 1: Personal Details */}
@@ -563,7 +563,7 @@ export default function CustomerFormDialog({
                     <RadioGroup
                       value={formData.loanType}
                       onValueChange={(value) => setFormData({ ...formData, loanType: value as LoanType })}
-                      className="flex gap-6"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="PL" id="pl" />
@@ -591,7 +591,7 @@ export default function CustomerFormDialog({
                     <RadioGroup
                       value={formData.caseType}
                       onValueChange={(value) => setFormData({ ...formData, caseType: value as CaseType })}
-                      className="flex gap-6"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="fresh" id="fresh" />
@@ -793,14 +793,14 @@ export default function CustomerFormDialog({
                   {isReadOnly ? (
                     <div className="p-2 bg-muted rounded-md text-sm capitalize">
                       {formData.employmentType === 'salaried' ? 'Salaried' :
-                       formData.employmentType === 'self_employed' ? 'Self Employed' :
-                       formData.employmentType === 'professional' ? 'Professional' : '-'}
+                        formData.employmentType === 'self_employed' ? 'Self Employed' :
+                          formData.employmentType === 'professional' ? 'Professional' : '-'}
                     </div>
                   ) : (
                     <RadioGroup
                       value={formData.employmentType}
                       onValueChange={(value) => setFormData({ ...formData, employmentType: value as EmploymentType })}
-                      className="flex gap-6"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="salaried" id="salaried" />
@@ -861,7 +861,7 @@ export default function CustomerFormDialog({
                     <RadioGroup
                       value={formData.homeType}
                       onValueChange={(value) => setFormData({ ...formData, homeType: value as HomeType })}
-                      className="flex gap-6"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="own" id="own" />
@@ -979,7 +979,19 @@ export default function CustomerFormDialog({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const pdfUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${customer.pdfUrl}`;
+                      // Construct proper PDF URL
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+                      // Extract base URL (remove /api suffix)
+                      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
+                      // Ensure protocol exists
+                      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+                        baseUrl = `https://${baseUrl}`;
+                      }
+                      // Ensure pdfUrl starts with /pdfs/ (clean any malformed paths)
+                      const pdfPath = customer.pdfUrl?.startsWith('/pdfs/')
+                        ? customer.pdfUrl
+                        : `/pdfs/${customer.pdfUrl?.split('/pdfs/').pop() || ''}`;
+                      const pdfUrl = `${baseUrl}${pdfPath}`;
                       window.open(pdfUrl, '_blank');
                     }}
                     className="gap-2"
@@ -1027,7 +1039,7 @@ export default function CustomerFormDialog({
                       <div key={index} className="p-3 bg-muted/50 rounded-lg text-sm">
                         <p className="text-foreground">{remark.text || remark.remark}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          By {remark.addedBy || (remark.user ? `${remark.user.firstName} ${remark.user.lastName}` : 'Unknown')} on {format(new Date(remark.addedAt || remark.createdAt), 'PPp')}
+                          By {remark.addedBy || (remark.users ? `${remark.users.firstName} ${remark.users.lastName}` : 'Unknown')} on {format(new Date(remark.addedAt || remark.createdAt), 'PPp')}
                         </p>
                       </div>
                     ))}

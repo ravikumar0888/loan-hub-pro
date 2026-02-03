@@ -339,17 +339,17 @@ export default function OrganizationsTab() {
             <Building2 className="h-5 w-5" />
             Organizations
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex flex-col gap-4 w-full sm:flex-row sm:items-center">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search organizations..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 w-64"
+                className="pl-9 w-full"
               />
             </div>
-            <Button onClick={openCreateDialog}>
+            <Button onClick={openCreateDialog} className="w-full sm:w-auto mt-2 sm:mt-0">
               <Plus className="h-4 w-4 mr-2" />
               Add Organization
             </Button>

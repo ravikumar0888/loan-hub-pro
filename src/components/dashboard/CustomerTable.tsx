@@ -7,6 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableMobileCard,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,12 +74,17 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.mobile.includes(searchQuery) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+      customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.mobile?.includes(searchQuery) ||
+      customer.email?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Reset to page 1 when search or filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const paginatedCustomers = filteredCustomers.slice(
@@ -117,7 +123,126 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Mobile Card View */}
+      <div className="md:hidden p-3 space-y-3">
+        {paginatedCustomers.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No customers found
+          </div>
+        ) : (
+          paginatedCustomers.map((customer) => (
+            <TableMobileCard key={customer.id}>
+              {/* Header with Name and Status */}
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base truncate">{customer.name}</h3>
+                  <p className="text-sm text-muted-foreground">{customer.applicationId || '-'}</p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'capitalize font-medium ml-2 flex-shrink-0',
+                    statusStyles[customer.status]
+                  )}
+                >
+                  {customer.status}
+                </Badge>
+              </div>
+
+              {/* Customer Details Grid */}
+              <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                <div>
+                  <span className="text-muted-foreground block mb-1">Date</span>
+                  <p className="font-medium">
+                    {format(new Date(customer.applicationDate || customer.date || customer.createdAt), 'MMM dd, yyyy')}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block mb-1">Mobile</span>
+                  <p className="font-medium">{maskPhoneNumber(customer.mobile)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block mb-1">Loan Type</span>
+                  <Badge variant="outline" className="font-medium text-xs">
+                    {customer.loanType}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block mb-1">Amount</span>
+                  <p className="font-medium">₹{customer.loanAmount.toLocaleString()}</p>
+                </div>
+                {showPayoutColumn && customer.payout !== undefined && customer.payout !== null && customer.payout > 0 && (
+                  <div>
+                    <span className="text-muted-foreground block mb-1">Payout</span>
+                    <p className="font-medium text-success">
+                      ₹{Math.round(customer.payout).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-muted-foreground block mb-1">Bank</span>
+                  <p className="font-medium truncate">{customer.bank?.name || '-'}</p>
+                </div>
+                {showDSAColumn && (
+                  <div>
+                    <span className="text-muted-foreground block mb-1">DSA</span>
+                    <p className="font-medium truncate">{customer.dsa?.name || '-'}</p>
+                  </div>
+                )}
+                {showConnectorColumn && (
+                  <div>
+                    <span className="text-muted-foreground block mb-1">Channel Partner</span>
+                    <p className="font-medium truncate">
+                      {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
+                    </p>
+                  </div>
+                )}
+                {customer.location && (
+                  <div>
+                    <span className="text-muted-foreground block mb-1">Location</span>
+                    <p className="font-medium truncate">{customer.location}</p>
+                  </div>
+                )}
+                {showCreatedByColumn && customer.creator && (
+                  <div>
+                    <span className="text-muted-foreground block mb-1">Created By</span>
+                    <p className="font-medium truncate">
+                      {customer.creator.firstName} {customer.creator.lastName}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex gap-2 pt-3 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-10"
+                  onClick={() => onView?.(customer)}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View
+                </Button>
+                {role !== 'connector' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-10"
+                    onClick={() => onEdit?.(customer)}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </TableMobileCard>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -232,8 +357,8 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
       </div>
 
       {totalPages > 1 && (
-        <div className="p-4 border-t border-border flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+        <div className="p-3 sm:p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
             {Math.min(currentPage * itemsPerPage, filteredCustomers.length)} of{' '}
             {filteredCustomers.length} entries
@@ -241,22 +366,26 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
+              className="h-10 min-w-[90px]"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Previous
             </Button>
             <span className="text-sm font-medium px-2">
               {currentPage} / {totalPages}
             </span>
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
+              className="h-10 min-w-[90px]"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
             >
-              <ChevronRight className="w-4 h-4" />
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
         </div>

@@ -33,6 +33,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,8 +53,11 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { Plus, Wallet, TrendingUp, TrendingDown, FileText, Loader2 } from 'lucide-react';
 import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
+
+const ITEMS_PER_PAGE = 15;
 
 interface MonthlyPayoutData {
   month: number;
@@ -80,6 +91,19 @@ function Payouts() {
     year: new Date().getFullYear(),
   });
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Pagination calculations for monthly data
+  const totalPages = Math.ceil(monthlyData.length / ITEMS_PER_PAGE);
+  const paginatedMonthlyData = monthlyData.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset page when connector changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedConnector]);
 
   useEffect(() => {
     fetchData();
@@ -108,7 +132,7 @@ function Payouts() {
       } else {
         // SuperAdmin/Admin see connectors based on role
         // Fetch connectors separately to ensure dropdown is always populated
-        const connectorsRes = await usersApi.getConnectors();
+        const connectorsRes = await usersApi.getConnectors({ limit: 10000 });
         const connectorList = connectorsRes.data;
         setConnectors(connectorList);
 
@@ -200,7 +224,14 @@ function Payouts() {
 
     try {
       const result = await payoutsApi.generatePayoutPDF({ connectorId: selectedConnector, month, year });
-      const pdfUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${result.data.pdfUrl}`;
+      // Construct proper PDF URL
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        baseUrl = `https://${baseUrl}`;
+      }
+      const pdfPath = result.data.pdfUrl.startsWith('/') ? result.data.pdfUrl : `/${result.data.pdfUrl}`;
+      const pdfUrl = `${baseUrl}${pdfPath}`;
       window.open(pdfUrl, '_blank');
 
       toast({
@@ -406,7 +437,7 @@ function Payouts() {
           </CardHeader>
           <CardContent>
             <Accordion type="multiple" className="w-full">
-              {monthlyData.map((month) => (
+              {paginatedMonthlyData.map((month) => (
                 <AccordionItem key={month.monthKey} value={month.monthKey}>
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex justify-between w-full pr-4">
@@ -521,6 +552,60 @@ function Payouts() {
                 </AccordionItem>
               ))}
             </Accordion>
+
+            {/* Pagination - only show if more than 15 records */}
+            {monthlyData.length > ITEMS_PER_PAGE && (
+              <div className="p-3 sm:p-4 border-t border-border mt-4">
+                <Pagination>
+                  <PaginationContent className="flex-wrap justify-center gap-1">
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                        className={cn(
+                          'h-10 min-w-[80px]',
+                          currentPage === 1
+                            ? 'pointer-events-none opacity-50'
+                            : 'cursor-pointer'
+                        )}
+                      />
+                    </PaginationItem>
+
+                    <div className="hidden sm:flex gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer h-10 min-w-[40px]"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                    </div>
+
+                    {/* Mobile page indicator */}
+                    <div className="sm:hidden flex items-center px-3 text-sm font-medium">
+                      {currentPage} / {totalPages}
+                    </div>
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                        }
+                        className={cn(
+                          'h-10 min-w-[80px]',
+                          currentPage === totalPages
+                            ? 'pointer-events-none opacity-50'
+                            : 'cursor-pointer'
+                        )}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dsaInvoiceApi, dsasApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -32,11 +32,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { FileText, Download, Loader2, Plus, Trash2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
+
+const ITEMS_PER_PAGE = 15;
 
 function DsaInvoices() {
   const { toast } = useToast();
@@ -48,6 +59,7 @@ function DsaInvoices() {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch all DSAs for dropdown
   const { data: dsasData } = useQuery({
@@ -117,6 +129,18 @@ function DsaInvoices() {
   const dsas = dsasData || [];
   const invoices = invoicesData || [];
 
+  // Pagination calculations
+  const totalPages = Math.ceil(invoices.length / ITEMS_PER_PAGE);
+  const paginatedInvoices = invoices.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset page when invoices change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [invoices.length]);
+
   const handleGenerateInvoice = () => {
     if (!selectedDsaId || !selectedMonth || !selectedYear) {
       toast({
@@ -141,7 +165,14 @@ function DsaInvoices() {
 
   const handleDownloadPDF = (invoice: any) => {
     if (invoice.pdfUrl) {
-      const pdfUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${invoice.pdfUrl}`;
+      // Construct proper PDF URL
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        baseUrl = `https://${baseUrl}`;
+      }
+      const pdfPath = invoice.pdfUrl.startsWith('/') ? invoice.pdfUrl : `/${invoice.pdfUrl}`;
+      const pdfUrl = `${baseUrl}${pdfPath}`;
       window.open(pdfUrl, '_blank');
     }
   };
@@ -371,7 +402,7 @@ function DsaInvoices() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.map((invoice: any) => (
+                {paginatedInvoices.map((invoice: any) => (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                     <TableCell>{invoice.dsa?.name}</TableCell>
@@ -420,6 +451,60 @@ function DsaInvoices() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination - only show if more than 15 records */}
+          {invoices.length > ITEMS_PER_PAGE && (
+            <div className="p-3 sm:p-4 border-t border-border mt-4">
+              <Pagination>
+                <PaginationContent className="flex-wrap justify-center gap-1">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      className={cn(
+                        'h-10 min-w-[80px]',
+                        currentPage === 1
+                          ? 'pointer-events-none opacity-50'
+                          : 'cursor-pointer'
+                      )}
+                    />
+                  </PaginationItem>
+
+                  <div className="hidden sm:flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer h-10 min-w-[40px]"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                  </div>
+
+                  {/* Mobile page indicator */}
+                  <div className="sm:hidden flex items-center px-3 text-sm font-medium">
+                    {currentPage} / {totalPages}
+                  </div>
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      className={cn(
+                        'h-10 min-w-[80px]',
+                        currentPage === totalPages
+                          ? 'pointer-events-none opacity-50'
+                          : 'cursor-pointer'
+                      )}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
         </CardContent>
       </Card>

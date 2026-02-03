@@ -43,9 +43,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static files (for uploads)
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
-app.use('/pdfs', express.static(path.join(__dirname, '../public/pdfs')));
+// Static files (for uploads and PDFs)
+app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
+app.use('/pdfs', express.static(path.join(process.cwd(), 'public/pdfs')));
 
 // Disable caching for all API routes
 app.use('/api', (req, res, next) => {

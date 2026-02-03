@@ -108,22 +108,24 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
             {role === 'connector'
               ? 'View your performance metrics'
               : 'Overview of loan applications and performance'}
           </p>
         </div>
-        <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+        <div className="w-full sm:w-auto">
+          <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+        </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
         {kpiData &&
           Object.entries(kpiData)
             .filter(([key]) => key !== 'total' && key !== 'totalDisbursed')

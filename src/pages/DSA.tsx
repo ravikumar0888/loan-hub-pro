@@ -32,12 +32,23 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Plus, Loader2, Briefcase, Search, Edit, Trash2, X, ChevronDown, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dsasApi, banksApi } from '@/lib/api';
 import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
+
+const ITEMS_PER_PAGE = 15;
 
 function DSAPage() {
   const { toast } = useToast();
@@ -47,6 +58,7 @@ function DSAPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedDSA, setSelectedDSA] = useState<DSA | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [dsaName, setDsaName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -64,7 +76,7 @@ function DSAPage() {
   const { data: dsaData, isLoading: isLoadingDSAs, error: queryError } = useQuery({
     queryKey: ['dsas'],
     queryFn: async () => {
-      const response = await dsasApi.getDsas();
+      const response = await dsasApi.getDsas({ limit: 10000 });
       return response.data;
     },
     refetchOnMount: true,
@@ -76,7 +88,7 @@ function DSAPage() {
   const { data: banksData } = useQuery({
     queryKey: ['banks'],
     queryFn: async () => {
-      const response = await banksApi.getBanks();
+      const response = await banksApi.getBanks({ limit: 10000 });
       return response.data;
     },
     refetchOnMount: true,
@@ -90,6 +102,18 @@ function DSAPage() {
   const filteredDSAs = dsaList.filter((dsa: DSA) =>
     dsa.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredDSAs.length / ITEMS_PER_PAGE);
+  const paginatedDSAs = filteredDSAs.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const addBankDetail = () => {
     setBankDetails([
@@ -574,7 +598,7 @@ function DSAPage() {
           </div>
         ) : (
           <Accordion type="single" collapsible className="w-full">
-            {filteredDSAs.map((dsa: DSA) => (
+            {paginatedDSAs.map((dsa: DSA) => (
               <AccordionItem key={dsa.id} value={dsa.id} className="border-b border-border last:border-0">
                 <AccordionTrigger className="px-6 py-4 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center justify-between flex-1 mr-4">
@@ -656,6 +680,60 @@ function DSAPage() {
               </AccordionItem>
             ))}
           </Accordion>
+        )}
+
+        {/* Pagination - only show if more than 15 records */}
+        {filteredDSAs.length > ITEMS_PER_PAGE && (
+          <div className="p-3 sm:p-4 border-t border-border">
+            <Pagination>
+              <PaginationContent className="flex-wrap justify-center gap-1">
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    className={cn(
+                      'h-10 min-w-[80px]',
+                      currentPage === 1
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    )}
+                  />
+                </PaginationItem>
+
+                <div className="hidden sm:flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer h-10 min-w-[40px]"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                </div>
+
+                {/* Mobile page indicator */}
+                <div className="sm:hidden flex items-center px-3 text-sm font-medium">
+                  {currentPage} / {totalPages}
+                </div>
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    className={cn(
+                      'h-10 min-w-[80px]',
+                      currentPage === totalPages
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    )}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         )}
       </div>
 

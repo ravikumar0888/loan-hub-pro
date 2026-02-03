@@ -187,9 +187,29 @@
   .sidebar-link {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-foreground;
   }
-  
+
   .sidebar-link-active {
     @apply bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground;
+  }
+
+  /* Mobile touch targets - minimum 44px height */
+  @media (max-width: 768px) {
+    .sidebar-link {
+      @apply py-3;
+    }
+
+    button,
+    [role="button"],
+    a {
+      @apply min-h-[44px];
+      touch-action: manipulation;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      @apply min-h-[44px] min-w-[44px];
+      touch-action: manipulation;
+    }
   }
   
   .form-input-wrapper {

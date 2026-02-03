@@ -11,6 +11,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableMobileCard,
 } from '@/components/ui/table';
 import {
   Dialog,
@@ -69,7 +70,7 @@ function Users() {
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const response = await usersApi.getUsers();
+      const response = await usersApi.getUsers({ limit: 10000 });
       return response.data;
     },
   });
@@ -405,9 +406,14 @@ function Users() {
                       <SelectValue placeholder="Select user type" />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border border-border">
-                      {/* Admins can only create Channel Partner and BackOffice users */}
-                      {currentUserRole !== 'admin' && <SelectItem value="admin">Admin</SelectItem>}
-                      <SelectItem value="backoffice">BackOffice</SelectItem>
+                      {/* Superadmin can create Admin, BackOffice, and Channel Partner */}
+                      {currentUserRole === 'superadmin' && (
+                        <>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="backoffice">BackOffice</SelectItem>
+                        </>
+                      )}
+                      {/* All users who can access this page can create Channel Partner */}
                       <SelectItem value="connector">Channel Partner</SelectItem>
                     </SelectContent>
                   </Select>
@@ -531,10 +537,73 @@ function Users() {
 
         {usersLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <Loader2 className="w-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <Table>
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden p-3 space-y-3">
+              {paginatedUsers.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground py-8">
+                  <UsersIcon className="w-8 h-8" />
+                  <p>No users found</p>
+                </div>
+              ) : (
+                paginatedUsers.map((user: User) => (
+                  <TableMobileCard key={user.id}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base">{user.firstName} {user.lastName}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn('capitalize font-medium ml-2 flex-shrink-0 text-xs', roleStyles[user.role])}
+                      >
+                        {user.role}
+                      </Badge>
+                    </div>
+
+                    <div className="mb-3">
+                      <span className="text-xs text-muted-foreground block mb-1">Mobile</span>
+                      <p className="font-medium text-sm">{user.mobile}</p>
+                    </div>
+
+                    {/* Actions Footer */}
+                    <div className="flex gap-2 pt-3 border-t border-border">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-10"
+                        onClick={() => handleEdit(user)}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-10 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(user.id)}
+                        disabled={deleteUserMutation.isPending}
+                      >
+                        {deleteUserMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </TableMobileCard>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>Name</TableHead>
@@ -599,46 +668,56 @@ function Users() {
               )}
             </TableBody>
           </Table>
+          </>
         )}
 
         {/* Pagination - only show if more than 15 records */}
         {!usersLoading && filteredUsers.length > ITEMS_PER_PAGE && (
-          <div className="p-4 border-t border-border">
+          <div className="p-3 sm:p-4 border-t border-border">
             <Pagination>
-              <PaginationContent>
+              <PaginationContent className="flex-wrap justify-center gap-1">
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    className={
+                    className={cn(
+                      'h-10 min-w-[80px]',
                       currentPage === 1
                         ? 'pointer-events-none opacity-50'
                         : 'cursor-pointer'
-                    }
+                    )}
                   />
                 </PaginationItem>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(page)}
-                      isActive={currentPage === page}
-                      className="cursor-pointer"
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
+                <div className="hidden sm:flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer h-10 min-w-[40px]"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                </div>
+
+                {/* Mobile page indicator */}
+                <div className="sm:hidden flex items-center px-3 text-sm font-medium">
+                  {currentPage} / {totalPages}
+                </div>
 
                 <PaginationItem>
                   <PaginationNext
                     onClick={() =>
                       setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                     }
-                    className={
+                    className={cn(
+                      'h-10 min-w-[80px]',
                       currentPage === totalPages
                         ? 'pointer-events-none opacity-50'
                         : 'cursor-pointer'
-                    }
+                    )}
                   />
                 </PaginationItem>
               </PaginationContent>

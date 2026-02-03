@@ -21,7 +21,7 @@ export default function Customers() {
   const { data: customersData, isLoading: isLoadingCustomers } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      const response = await customersApi.getCustomers();
+      const response = await customersApi.getCustomers({ limit: 10000 });
       return response.data;
     },
   });
