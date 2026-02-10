@@ -89,6 +89,13 @@ export class ReportsService {
             lastName: true,
           },
         },
+        creator: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
         remarks: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -152,6 +159,9 @@ export class ReportsService {
           ? `${customer.leadOwnerUser.firstName} ${customer.leadOwnerUser.lastName}`
           : null,
         salesManagerName: customer.salesManager || null,
+        createdByName: customer.creator
+          ? `${customer.creator.firstName} ${customer.creator.lastName}`
+          : null,
       };
     });
 
@@ -252,6 +262,7 @@ export class ReportsService {
       'Connector Payout',
       'Net Revenue',
       'Remark',
+      'Lead Created By',
     ];
 
     const rows = customers.map((customer) => {
@@ -287,6 +298,7 @@ export class ReportsService {
         customer.connectorPayout?.toFixed(2) || '0.00',
         customer.netRevenue?.toFixed(2) || '0.00',
         customer.remarks?.[0]?.remark || '',
+        customer.createdByName || '',
       ];
     });
 
