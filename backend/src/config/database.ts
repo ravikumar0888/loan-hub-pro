@@ -1,9 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import logger from '../utils/logger';
 
-const prisma = new PrismaClient({
+// Global reference to prevent multiple instances
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
+
+// Reuse existing connection or create new one
+const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
+
+// Store in global to reuse across hot reloads (development) and module imports
+if (!globalForPrisma.prisma) {
+  globalForPrisma.prisma = prisma;
+}
 
 // Test database connection
 export const connectDatabase = async () => {

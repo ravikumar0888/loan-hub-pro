@@ -24,8 +24,9 @@ import { Loader2, Download, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Customer, LoanType, LoanStatus, HomeType, CaseType, MaritalStatus, EmploymentType } from '@/types';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
-import { usersApi, banksApi, dsasApi } from '@/lib/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { usersApi, banksApi, dsasApi, customersApi } from '@/lib/api';
+import { FileText } from 'lucide-react';
 
 interface CustomerFormDialogProps {
   open: boolean;
@@ -79,7 +80,7 @@ const emptyFormData = {
   bankId: '',
   leadOwner: '',
   salesManager: '',
-  status: 'login' as LoanStatus,
+  status: '' as LoanStatus | '',
   newRemark: '',
   pdfUrl: '',
 };
@@ -93,7 +94,9 @@ export default function CustomerFormDialog({
 }: CustomerFormDialogProps) {
   const { role } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [formData, setFormData] = useState(emptyFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState('personal');
@@ -142,14 +145,22 @@ export default function CustomerFormDialog({
   const canAddRemark = role === 'superadmin' || role === 'admin' || role === 'backoffice';
   const showDSAField = (role as string) !== 'connector';
 
+  // Filter connectors based on selected Lead Owner (createdBy)
+  const filteredConnectors = React.useMemo(() => {
+    if (!formData.leadOwner) {
+      return []; // No channel partners until Lead Owner is selected
+    }
+    return connectors.filter((c: any) => c.createdBy === formData.leadOwner);
+  }, [formData.leadOwner, connectors]);
+
   // Filter banks based on selected DSA's bank details
   const filteredBanks = React.useMemo(() => {
     if (!formData.dsaId) {
-      return banks; // Show all banks if no DSA selected
+      return []; // No banks until DSA is selected
     }
     const selectedDsa = dsas.find((d: any) => d.id === formData.dsaId);
     if (!selectedDsa?.bankDetails || selectedDsa.bankDetails.length === 0) {
-      return banks; // Show all banks if DSA has no bank details
+      return banks; // Show all banks if DSA has no bank details configured
     }
     // Get bank IDs from DSA's bank details
     const dsaBankIds = selectedDsa.bankDetails.map((bd: any) => bd.bankId);
@@ -249,23 +260,44 @@ export default function CustomerFormDialog({
     switch (tab) {
       case 'personal':
         if (!formData.name.trim()) newErrors.name = 'Client name is required';
+        if (!formData.panNo.trim()) newErrors.panNo = 'PAN number is required';
+        if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
         if (!formData.mobile.match(/^\d{10}$/)) newErrors.mobile = 'Valid 10-digit mobile required';
+        if (!formData.personalEmail.trim()) newErrors.personalEmail = 'Personal email is required';
         break;
       case 'loan':
         if (!formData.loanAmount || Number(formData.loanAmount) <= 0) newErrors.loanAmount = 'Valid loan amount required';
+        if (!formData.tenure.trim()) newErrors.tenure = 'Tenure is required';
+        if (!formData.location.trim()) newErrors.location = 'Location is required';
+        if (!formData.leadOwner) newErrors.leadOwner = 'Lead Owner is required';
         if (!formData.connectorId) newErrors.connectorId = 'Channel Partner is required';
+        if (showDSAField && !formData.dsaId) newErrors.dsaId = 'DSA is required';
+        if (!formData.bankId) newErrors.bankId = 'Bank is required';
+        if (!formData.salesManager.trim()) newErrors.salesManager = 'Sales Manager is required';
+        // Validate payout config for channel partner + bank
+        if (formData.connectorId && formData.bankId) {
+          const selectedConnector = connectors.find((c: any) => c.id === formData.connectorId);
+          const hasConfig = selectedConnector?.userBankDetails?.some(
+            (bd: any) => bd.bankId === formData.bankId && bd.loanType === formData.loanType
+          );
+          if (!hasConfig) {
+            newErrors.bankPayoutConfig = 'Please configure bank for selected channel partner';
+          }
+        }
         break;
       case 'professional':
         // No mandatory fields
         break;
       case 'address':
-        // No mandatory fields
+        if (!formData.currentAddress.trim()) newErrors.currentAddress = 'Current address is required';
+        if (!formData.postalAddress.trim()) newErrors.postalAddress = 'Postal address is required';
         break;
       case 'reference':
         // No mandatory fields
         break;
       case 'remarks':
-        // No mandatory fields
+        if (mode === 'add' && !formData.status) newErrors.status = 'Status is required';
+        if (mode === 'add' && !formData.newRemark.trim()) newErrors.newRemark = 'Remark is required';
         break;
     }
 
@@ -276,10 +308,40 @@ export default function CustomerFormDialog({
   const validateAllTabs = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Personal tab
     if (!formData.name.trim()) newErrors.name = 'Client name is required';
+    if (!formData.panNo.trim()) newErrors.panNo = 'PAN number is required';
+    if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
     if (!formData.mobile.match(/^\d{10}$/)) newErrors.mobile = 'Valid 10-digit mobile required';
+    if (!formData.personalEmail.trim()) newErrors.personalEmail = 'Personal email is required';
+
+    // Loan tab
     if (!formData.loanAmount || Number(formData.loanAmount) <= 0) newErrors.loanAmount = 'Valid loan amount required';
+    if (!formData.tenure.trim()) newErrors.tenure = 'Tenure is required';
+    if (!formData.location.trim()) newErrors.location = 'Location is required';
+    if (!formData.leadOwner) newErrors.leadOwner = 'Lead Owner is required';
     if (!formData.connectorId) newErrors.connectorId = 'Channel Partner is required';
+    if (showDSAField && !formData.dsaId) newErrors.dsaId = 'DSA is required';
+    if (!formData.bankId) newErrors.bankId = 'Bank is required';
+    if (!formData.salesManager.trim()) newErrors.salesManager = 'Sales Manager is required';
+    // Validate payout config for channel partner + bank
+    if (formData.connectorId && formData.bankId) {
+      const selectedConnector = connectors.find((c: any) => c.id === formData.connectorId);
+      const hasConfig = selectedConnector?.userBankDetails?.some(
+        (bd: any) => bd.bankId === formData.bankId && bd.loanType === formData.loanType
+      );
+      if (!hasConfig) {
+        newErrors.bankPayoutConfig = 'Please configure bank for selected channel partner';
+      }
+    }
+
+    // Address tab
+    if (!formData.currentAddress.trim()) newErrors.currentAddress = 'Current address is required';
+    if (!formData.postalAddress.trim()) newErrors.postalAddress = 'Postal address is required';
+
+    // Remarks tab
+    if (mode === 'add' && !formData.status) newErrors.status = 'Status is required';
+    if (mode === 'add' && !formData.newRemark.trim()) newErrors.newRemark = 'Remark is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -431,26 +493,30 @@ export default function CustomerFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-card p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === 'add' ? 'Add New Lead' : mode === 'edit' ? 'Edit Lead' : 'View Lead'}
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="mt-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-6 mb-6 pb-2 sm:pb-0 gap-2 sm:gap-0 no-scrollbar max-w-full">
-              <TabsTrigger value="personal" className="flex-shrink-0">Personal</TabsTrigger>
-              <TabsTrigger value="loan" className="flex-shrink-0">Loan</TabsTrigger>
-              <TabsTrigger value="professional" className="flex-shrink-0">Professional</TabsTrigger>
-              <TabsTrigger value="address" className="flex-shrink-0">Address</TabsTrigger>
-              <TabsTrigger value="reference" className="flex-shrink-0">Reference</TabsTrigger>
-              <TabsTrigger value="remarks" className="flex-shrink-0">Remarks</TabsTrigger>
+      <DialogContent className="w-full max-w-[100vw] sm:max-w-[95vw] md:max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden bg-card p-0 rounded-none sm:rounded-lg flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
+          {/* Fixed Header: Title + Tabs */}
+          <div className="flex-shrink-0 bg-card px-3 sm:px-6 pt-3 sm:pt-6 pb-3 sm:pb-4 border-b border-border">
+            <DialogHeader>
+              <DialogTitle>
+                {mode === 'add' ? 'Add New Lead' : mode === 'edit' ? 'Edit Lead' : 'View Lead'}
+              </DialogTitle>
+            </DialogHeader>
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mt-3 sm:mt-4 gap-1 sm:gap-0 h-auto sm:h-10 p-1">
+              <TabsTrigger value="personal" className="text-xs sm:text-sm px-1 sm:px-3 py-2 sm:py-1.5">Personal</TabsTrigger>
+              <TabsTrigger value="loan" className="text-xs sm:text-sm px-1 sm:px-3 py-2 sm:py-1.5">Loan</TabsTrigger>
+              <TabsTrigger value="professional" className="text-xs sm:text-sm px-1 sm:px-3 py-2 sm:py-1.5">Professional</TabsTrigger>
+              <TabsTrigger value="address" className="text-xs sm:text-sm px-1 sm:px-3 py-2 sm:py-1.5">Address</TabsTrigger>
+              <TabsTrigger value="reference" className="text-xs sm:text-sm px-1 sm:px-3 py-2 sm:py-1.5">Reference</TabsTrigger>
+              <TabsTrigger value="remarks" className="text-xs sm:text-sm px-1 sm:px-3 py-2 sm:py-1.5">Remarks</TabsTrigger>
             </TabsList>
+          </div>
+
+          {/* Scrollable Content */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pt-4 pb-3 sm:pb-6">
 
             {/* Tab 1: Personal Details */}
-            <TabsContent value="personal" className="space-y-4 min-h-[420px]">
+            <TabsContent value="personal" className="space-y-4 min-h-[300px] sm:min-h-[420px]">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="applicationDate">Application Date</Label>
@@ -485,25 +551,30 @@ export default function CustomerFormDialog({
                 })}
 
                 {renderField('panNo', 'PAN No', formData.panNo, (v) => setFormData({ ...formData, panNo: v.toUpperCase() }), {
+                  required: true,
                   placeholder: 'ABCDE1234F',
                   maxLength: 10,
+                  error: errors.panNo,
                 })}
 
                 <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">DOB</Label>
+                  <Label htmlFor="dateOfBirth">DOB *</Label>
                   {isReadOnly ? (
                     <div className="p-2 bg-muted rounded-md text-sm">
                       {formData.dateOfBirth ? format(formData.dateOfBirth, 'PPP') : '-'}
                     </div>
                   ) : (
-                    <DatePicker
-                      date={formData.dateOfBirth || undefined}
-                      onDateChange={(date) => setFormData({ ...formData, dateOfBirth: date || null })}
-                      placeholder="Select date of birth"
-                      fromYear={1950}
-                      toYear={new Date().getFullYear()}
-                    />
+                    <div className={errors.dateOfBirth ? 'ring-1 ring-destructive rounded-md' : ''}>
+                      <DatePicker
+                        date={formData.dateOfBirth || undefined}
+                        onDateChange={(date) => { setFormData({ ...formData, dateOfBirth: date || null }); setErrors(prev => ({ ...prev, dateOfBirth: '' })); }}
+                        placeholder="Select date of birth"
+                        fromYear={1950}
+                        toYear={new Date().getFullYear()}
+                      />
+                    </div>
                   )}
+                  {errors.dateOfBirth && <p className="text-sm text-destructive">{errors.dateOfBirth}</p>}
                 </div>
 
                 {renderField('motherName', 'Mother Name', formData.motherName, (v) => setFormData({ ...formData, motherName: v }))}
@@ -518,8 +589,10 @@ export default function CustomerFormDialog({
                 })}
 
                 {renderField('personalEmail', 'Personal Email Id', formData.personalEmail, (v) => setFormData({ ...formData, personalEmail: v }), {
+                  required: true,
                   placeholder: 'personal@example.com',
                   type: 'email',
+                  error: errors.personalEmail,
                 })}
 
                 {renderField('qualification', 'Qualification', formData.qualification, (v) => setFormData({ ...formData, qualification: v }), {
@@ -551,7 +624,7 @@ export default function CustomerFormDialog({
             </TabsContent>
 
             {/* Tab 2: Loan Details */}
-            <TabsContent value="loan" className="space-y-4 min-h-[420px]">
+            <TabsContent value="loan" className="space-y-4 min-h-[300px] sm:min-h-[420px]">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2 md:col-span-2 lg:col-span-3">
                   <Label>Loan Type *</Label>
@@ -563,19 +636,19 @@ export default function CustomerFormDialog({
                     <RadioGroup
                       value={formData.loanType}
                       onValueChange={(value) => setFormData({ ...formData, loanType: value as LoanType })}
-                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4"
                     >
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="PL" id="pl" />
-                        <Label htmlFor="pl" className="cursor-pointer">Personal Loan (PL)</Label>
+                        <Label htmlFor="pl" className="cursor-pointer text-sm sm:text-sm">Personal Loan (PL)</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="HL" id="hl" />
-                        <Label htmlFor="hl" className="cursor-pointer">Home Loan (HL)</Label>
+                        <Label htmlFor="hl" className="cursor-pointer text-sm sm:text-sm">Home Loan (HL)</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="BL" id="bl" />
-                        <Label htmlFor="bl" className="cursor-pointer">Business Loan (BL)</Label>
+                        <Label htmlFor="bl" className="cursor-pointer text-sm sm:text-sm">Business Loan (BL)</Label>
                       </div>
                     </RadioGroup>
                   )}
@@ -591,19 +664,19 @@ export default function CustomerFormDialog({
                     <RadioGroup
                       value={formData.caseType}
                       onValueChange={(value) => setFormData({ ...formData, caseType: value as CaseType })}
-                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4"
                     >
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="fresh" id="fresh" />
-                        <Label htmlFor="fresh" className="cursor-pointer">Fresh</Label>
+                        <Label htmlFor="fresh" className="cursor-pointer text-sm">Fresh</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="bt" id="bt" />
-                        <Label htmlFor="bt" className="cursor-pointer">BT</Label>
+                        <Label htmlFor="bt" className="cursor-pointer text-sm">BT</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="bt_topup" id="bt_topup" />
-                        <Label htmlFor="bt_topup" className="cursor-pointer">BT-TopUp</Label>
+                        <Label htmlFor="bt_topup" className="cursor-pointer text-sm">BT-TopUp</Label>
                       </div>
                     </RadioGroup>
                   )}
@@ -616,22 +689,27 @@ export default function CustomerFormDialog({
                 })}
 
                 {renderField('tenure', 'Tenure', formData.tenure, (v) => setFormData({ ...formData, tenure: v }), {
+                  required: true,
                   placeholder: 'e.g., 12 months, 5 years',
+                  error: errors.tenure,
                 })}
 
-                {renderField('location', 'Location', formData.location, (v) => setFormData({ ...formData, location: v }))}
+                {renderField('location', 'Location', formData.location, (v) => setFormData({ ...formData, location: v }), {
+                  required: true,
+                  error: errors.location,
+                })}
 
                 <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md">
                     <input
                       type="checkbox"
                       id="hasSubvention"
                       checked={formData.hasSubvention}
                       onChange={(e) => setFormData({ ...formData, hasSubvention: e.target.checked, subventionAmount: e.target.checked ? formData.subventionAmount : '' })}
                       disabled={isReadOnly}
-                      className="w-4 h-4 border border-border rounded"
+                      className="w-5 h-5 sm:w-4 sm:h-4 border border-border rounded flex-shrink-0"
                     />
-                    <Label htmlFor="hasSubvention" className="cursor-pointer">
+                    <Label htmlFor="hasSubvention" className="cursor-pointer text-sm">
                       Has Subvention (Amount will be deducted from Channel Partner payout)
                     </Label>
                   </div>
@@ -664,6 +742,34 @@ export default function CustomerFormDialog({
                 )}
 
                 <div className="space-y-2">
+                  <Label>Lead Owner *</Label>
+                  {isReadOnly ? (
+                    <div className="p-2 bg-muted rounded-md text-sm">
+                      {admins.find((a: any) => a.id === formData.leadOwner)
+                        ? `${admins.find((a: any) => a.id === formData.leadOwner)!.firstName} ${admins.find((a: any) => a.id === formData.leadOwner)!.lastName}`
+                        : '-'}
+                    </div>
+                  ) : (
+                    <Select
+                      value={formData.leadOwner}
+                      onValueChange={(value) => { setFormData({ ...formData, leadOwner: value, connectorId: '', bankId: '' }); setErrors(prev => ({ ...prev, leadOwner: '', connectorId: '', bankId: '' })); }}
+                    >
+                      <SelectTrigger className={errors.leadOwner ? 'border-destructive' : ''}>
+                        <SelectValue placeholder="Select Lead Owner" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border border-border">
+                        {admins.map((admin: any) => (
+                          <SelectItem key={admin.id} value={admin.id}>
+                            {admin.firstName} {admin.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {errors.leadOwner && <p className="text-sm text-destructive">{errors.leadOwner}</p>}
+                </div>
+
+                <div className="space-y-2">
                   <Label>Channel Partner *</Label>
                   {isReadOnly ? (
                     <div className="p-2 bg-muted rounded-md text-sm">
@@ -673,14 +779,15 @@ export default function CustomerFormDialog({
                     </div>
                   ) : (
                     <Select
-                      value={formData.connectorId}
-                      onValueChange={(value) => setFormData({ ...formData, connectorId: value })}
+                      value={formData.connectorId || undefined}
+                      onValueChange={(value) => { setFormData({ ...formData, connectorId: value, bankId: '' }); setErrors(prev => ({ ...prev, connectorId: '', bankId: '', bankPayoutConfig: '' })); }}
+                      disabled={!formData.leadOwner}
                     >
                       <SelectTrigger className={errors.connectorId ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Select channel partner" />
+                        <SelectValue placeholder={formData.leadOwner ? "Select channel partner" : "Select Lead Owner first"} />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border border-border">
-                        {connectors.map((connector) => (
+                        {filteredConnectors.map((connector: any) => (
                           <SelectItem key={connector.id} value={connector.id}>
                             {connector.firstName} {connector.lastName}
                           </SelectItem>
@@ -693,7 +800,7 @@ export default function CustomerFormDialog({
 
                 {showDSAField && (
                   <div className="space-y-2">
-                    <Label>DSA</Label>
+                    <Label>DSA *</Label>
                     {isReadOnly ? (
                       <div className="p-2 bg-muted rounded-md text-sm">
                         {dsas.find((d: any) => d.id === formData.dsaId)?.name || '-'}
@@ -712,9 +819,10 @@ export default function CustomerFormDialog({
                             }
                           }
                           setFormData({ ...formData, dsaId: value, bankId: newBankId });
+                          setErrors(prev => ({ ...prev, dsaId: '' }));
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className={errors.dsaId ? 'border-destructive' : ''}>
                           <SelectValue placeholder="Select DSA" />
                         </SelectTrigger>
                         <SelectContent className="bg-popover border border-border">
@@ -726,22 +834,37 @@ export default function CustomerFormDialog({
                         </SelectContent>
                       </Select>
                     )}
+                    {errors.dsaId && <p className="text-sm text-destructive">{errors.dsaId}</p>}
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label>Bank Name</Label>
+                  <Label>Bank Name *</Label>
                   {isReadOnly ? (
                     <div className="p-2 bg-muted rounded-md text-sm">
                       {banks.find((b: any) => b.id === formData.bankId)?.name || '-'}
                     </div>
                   ) : (
                     <Select
-                      value={formData.bankId}
-                      onValueChange={(value) => setFormData({ ...formData, bankId: value })}
+                      value={formData.bankId || undefined}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, bankId: value });
+                        setErrors(prev => ({ ...prev, bankId: '', bankPayoutConfig: '' }));
+                        // Validate payout ratio config for selected channel partner + bank + loan type
+                        if (formData.connectorId && value) {
+                          const selectedConnector = connectors.find((c: any) => c.id === formData.connectorId);
+                          const hasConfig = selectedConnector?.userBankDetails?.some(
+                            (bd: any) => bd.bankId === value && bd.loanType === formData.loanType
+                          );
+                          if (!hasConfig) {
+                            setErrors(prev => ({ ...prev, bankPayoutConfig: 'Please configure bank for selected channel partner' }));
+                          }
+                        }
+                      }}
+                      disabled={!formData.dsaId}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select bank" />
+                      <SelectTrigger className={(errors.bankId || errors.bankPayoutConfig) ? 'border-destructive' : ''}>
+                        <SelectValue placeholder={formData.dsaId ? "Select bank" : "Select DSA first"} />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border border-border">
                         {filteredBanks.map((bank: any) => (
@@ -752,41 +875,19 @@ export default function CustomerFormDialog({
                       </SelectContent>
                     </Select>
                   )}
+                  {errors.bankId && <p className="text-sm text-destructive">{errors.bankId}</p>}
+                  {errors.bankPayoutConfig && <p className="text-sm text-destructive">{errors.bankPayoutConfig}</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Lead Owner</Label>
-                  {isReadOnly ? (
-                    <div className="p-2 bg-muted rounded-md text-sm">
-                      {admins.find((a: any) => a.id === formData.leadOwner)
-                        ? `${admins.find((a: any) => a.id === formData.leadOwner)!.firstName} ${admins.find((a: any) => a.id === formData.leadOwner)!.lastName}`
-                        : '-'}
-                    </div>
-                  ) : (
-                    <Select
-                      value={formData.leadOwner}
-                      onValueChange={(value) => setFormData({ ...formData, leadOwner: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Lead Owner" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border border-border">
-                        {admins.map((admin: any) => (
-                          <SelectItem key={admin.id} value={admin.id}>
-                            {admin.firstName} {admin.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-
-                {renderField('salesManager', 'Sales Manager', formData.salesManager, (v) => setFormData({ ...formData, salesManager: v }))}
+                {renderField('salesManager', 'Sales Manager', formData.salesManager, (v) => setFormData({ ...formData, salesManager: v }), {
+                  required: true,
+                  error: errors.salesManager,
+                })}
               </div>
             </TabsContent>
 
             {/* Tab 3: Professional Details */}
-            <TabsContent value="professional" className="space-y-4 min-h-[420px]">
+            <TabsContent value="professional" className="space-y-4 min-h-[300px] sm:min-h-[420px]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2 md:col-span-2">
                   <Label>Employment Type</Label>
@@ -800,19 +901,19 @@ export default function CustomerFormDialog({
                     <RadioGroup
                       value={formData.employmentType}
                       onValueChange={(value) => setFormData({ ...formData, employmentType: value as EmploymentType })}
-                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4"
                     >
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="salaried" id="salaried" />
-                        <Label htmlFor="salaried" className="cursor-pointer">Salaried</Label>
+                        <Label htmlFor="salaried" className="cursor-pointer text-sm">Salaried</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="self_employed" id="self_employed" />
-                        <Label htmlFor="self_employed" className="cursor-pointer">Self Employed</Label>
+                        <Label htmlFor="self_employed" className="cursor-pointer text-sm">Self Employed</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="professional" id="professional" />
-                        <Label htmlFor="professional" className="cursor-pointer">Professional</Label>
+                        <Label htmlFor="professional" className="cursor-pointer text-sm">Professional</Label>
                       </div>
                     </RadioGroup>
                   )}
@@ -851,7 +952,7 @@ export default function CustomerFormDialog({
             </TabsContent>
 
             {/* Tab 4: Address */}
-            <TabsContent value="address" className="space-y-4 min-h-[420px]">
+            <TabsContent value="address" className="space-y-4 min-h-[300px] sm:min-h-[420px]">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Home Type</Label>
@@ -861,58 +962,62 @@ export default function CustomerFormDialog({
                     <RadioGroup
                       value={formData.homeType}
                       onValueChange={(value) => setFormData({ ...formData, homeType: value as HomeType })}
-                      className="flex flex-col sm:flex-row sm:flex-wrap gap-4"
+                      className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4"
                     >
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="own" id="own" />
-                        <Label htmlFor="own" className="cursor-pointer">Own House</Label>
+                        <Label htmlFor="own" className="cursor-pointer text-sm">Own House</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="rental" id="rental" />
-                        <Label htmlFor="rental" className="cursor-pointer">Rental</Label>
+                        <Label htmlFor="rental" className="cursor-pointer text-sm">Rental</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-2 sm:p-0 rounded-md hover:bg-muted/50 sm:hover:bg-transparent">
                         <RadioGroupItem value="self-occupied" id="self-occupied" />
-                        <Label htmlFor="self-occupied" className="cursor-pointer">Self-Occupied</Label>
+                        <Label htmlFor="self-occupied" className="cursor-pointer text-sm">Self-Occupied</Label>
                       </div>
                     </RadioGroup>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="currentAddress">Current Address</Label>
+                  <Label htmlFor="currentAddress">Current Address *</Label>
                   {isReadOnly ? (
                     <div className="p-2 bg-muted rounded-md text-sm">{formData.currentAddress || '-'}</div>
                   ) : (
                     <Textarea
                       id="currentAddress"
                       value={formData.currentAddress}
-                      onChange={(e) => setFormData({ ...formData, currentAddress: e.target.value })}
+                      onChange={(e) => { setFormData({ ...formData, currentAddress: e.target.value }); setErrors(prev => ({ ...prev, currentAddress: '' })); }}
                       rows={3}
                       placeholder="Enter current residential address"
+                      className={errors.currentAddress ? 'border-destructive' : ''}
                     />
                   )}
+                  {errors.currentAddress && <p className="text-sm text-destructive">{errors.currentAddress}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="postalAddress">Postal Address</Label>
+                  <Label htmlFor="postalAddress">Postal Address *</Label>
                   {isReadOnly ? (
                     <div className="p-2 bg-muted rounded-md text-sm">{formData.postalAddress || '-'}</div>
                   ) : (
                     <Textarea
                       id="postalAddress"
                       value={formData.postalAddress}
-                      onChange={(e) => setFormData({ ...formData, postalAddress: e.target.value })}
+                      onChange={(e) => { setFormData({ ...formData, postalAddress: e.target.value }); setErrors(prev => ({ ...prev, postalAddress: '' })); }}
                       rows={3}
                       placeholder="Enter postal address (if different from current)"
+                      className={errors.postalAddress ? 'border-destructive' : ''}
                     />
                   )}
+                  {errors.postalAddress && <p className="text-sm text-destructive">{errors.postalAddress}</p>}
                 </div>
               </div>
             </TabsContent>
 
             {/* Tab 5: Reference & Nominee */}
-            <TabsContent value="reference" className="space-y-6 min-h-[420px]">
+            <TabsContent value="reference" className="space-y-6 min-h-[300px] sm:min-h-[420px]">
               {/* References */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-primary">References</h4>
@@ -970,10 +1075,10 @@ export default function CustomerFormDialog({
             </TabsContent>
 
             {/* Tab 6: Remarks */}
-            <TabsContent value="remarks" className="space-y-4 min-h-[420px]">
-              {/* PDF Download Button */}
-              {customer?.pdfUrl && (
-                <div className="flex justify-end">
+            <TabsContent value="remarks" className="space-y-4 min-h-[300px] sm:min-h-[420px]">
+              {/* PDF Download/Generate Button */}
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                {customer?.pdfUrl ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -981,13 +1086,10 @@ export default function CustomerFormDialog({
                     onClick={() => {
                       // Construct proper PDF URL
                       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-                      // Extract base URL (remove /api suffix)
                       let baseUrl = apiUrl.replace(/\/api\/?$/, '');
-                      // Ensure protocol exists
                       if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
                         baseUrl = `https://${baseUrl}`;
                       }
-                      // Ensure pdfUrl starts with /pdfs/ (clean any malformed paths)
                       const pdfPath = customer.pdfUrl?.startsWith('/pdfs/')
                         ? customer.pdfUrl
                         : `/pdfs/${customer.pdfUrl?.split('/pdfs/').pop() || ''}`;
@@ -999,23 +1101,71 @@ export default function CustomerFormDialog({
                     <Download className="w-4 h-4" />
                     Download Customer PDF
                   </Button>
-                </div>
-              )}
+                ) : customer?.id ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isGeneratingPDF}
+                    onClick={async () => {
+                      if (!customer?.id) return;
+                      setIsGeneratingPDF(true);
+                      try {
+                        const response = await customersApi.generatePDF(customer.id);
+                        if (response.success && response.data?.pdfUrl) {
+                          toast({
+                            title: 'PDF Generated',
+                            description: 'Customer PDF has been generated successfully.',
+                          });
+                          // Refresh customer data to get new pdfUrl
+                          queryClient.invalidateQueries({ queryKey: ['customers'] });
+                          // Open the PDF
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+                          let baseUrl = apiUrl.replace(/\/api\/?$/, '');
+                          if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+                            baseUrl = `https://${baseUrl}`;
+                          }
+                          window.open(`${baseUrl}${response.data.pdfUrl}`, '_blank');
+                        }
+                      } catch (error: any) {
+                        toast({
+                          title: 'Error',
+                          description: error.message || 'Failed to generate PDF',
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setIsGeneratingPDF(false);
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    {isGeneratingPDF ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    {isGeneratingPDF ? 'Generating...' : 'Generate PDF'}
+                  </Button>
+                ) : null}
+              </div>
 
               {/* Loan Status */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-primary">Loan Status</h4>
                 <div className="space-y-2">
-                  <Label>Status</Label>
-                  {isReadOnly ? (
+                  <Label>Status {mode === 'add' ? '*' : ''}</Label>
+                  {/* Status is read-only if:
+                      1. View mode OR
+                      2. Backoffice user AND status is already disbursed */}
+                  {isReadOnly || (role === 'backoffice' && customer?.status === 'disbursed') ? (
                     <div className="p-2 bg-muted rounded-md text-sm capitalize">{formData.status}</div>
                   ) : (
                     <Select
-                      value={formData.status}
-                      onValueChange={(value) => setFormData({ ...formData, status: value as LoanStatus })}
+                      value={formData.status || undefined}
+                      onValueChange={(value) => { setFormData({ ...formData, status: value as LoanStatus }); setErrors(prev => ({ ...prev, status: '' })); }}
                     >
-                      <SelectTrigger className="w-full md:w-1/3">
-                        <SelectValue />
+                      <SelectTrigger className={`w-full md:w-1/3 ${errors.status ? 'border-destructive' : ''}`}>
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border border-border">
                         <SelectItem value="login">Login</SelectItem>
@@ -1028,6 +1178,7 @@ export default function CustomerFormDialog({
                       </SelectContent>
                     </Select>
                   )}
+                  {errors.status && <p className="text-sm text-destructive">{errors.status}</p>}
                 </div>
               </div>
               {/* Existing Remarks - Visible to everyone */}
@@ -1057,14 +1208,16 @@ export default function CustomerFormDialog({
               {/* Add New Remark - Only for Admin and BackOffice */}
               {canAddRemark && !isReadOnly && (
                 <div className="space-y-2">
-                  <Label htmlFor="newRemark">Add New Remark</Label>
+                  <Label htmlFor="newRemark">Add New Remark {mode === 'add' ? '*' : ''}</Label>
                   <Textarea
                     id="newRemark"
                     value={formData.newRemark}
-                    onChange={(e) => setFormData({ ...formData, newRemark: e.target.value })}
+                    onChange={(e) => { setFormData({ ...formData, newRemark: e.target.value }); setErrors(prev => ({ ...prev, newRemark: '' })); }}
                     placeholder="Add a comment or note..."
                     rows={4}
+                    className={errors.newRemark ? 'border-destructive' : ''}
                   />
+                  {errors.newRemark && <p className="text-sm text-destructive">{errors.newRemark}</p>}
                 </div>
               )}
 
@@ -1075,40 +1228,41 @@ export default function CustomerFormDialog({
                 </div>
               )}
             </TabsContent>
-          </Tabs>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              {isReadOnly ? 'Close' : 'Cancel'}
-            </Button>
-            {!isReadOnly && (
-              <>
-                {!isLastTab ? (
-                  <Button type="button" onClick={(e) => handleNextTab(e)}>
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      mode === 'add' ? 'Save Customer' : 'Update Customer'
-                    )}
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        </form>
+            {/* Action Buttons */}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-border mt-4 sm:mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => onOpenChange(false)}
+              >
+                {isReadOnly ? 'Close' : 'Cancel'}
+              </Button>
+              {!isReadOnly && (
+                <>
+                  {!isLastTab ? (
+                    <Button type="button" className="w-full sm:w-auto" onClick={(e) => handleNextTab(e)}>
+                      Next
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        mode === 'add' ? 'Save Customer' : 'Update Customer'
+                      )}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </form>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

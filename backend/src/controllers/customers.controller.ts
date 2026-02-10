@@ -148,4 +148,24 @@ export class CustomersController {
       next(error);
     }
   }
+
+  async generatePDF(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const result = await customersService.generatePDF(
+        id,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
+
+      res.json({
+        success: true,
+        data: { pdfUrl: result.pdfUrl },
+        message: 'PDF generated successfully',
+      });
+    } catch (error: any) {
+      next(error);
+    }
+  }
 }

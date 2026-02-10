@@ -362,12 +362,13 @@ function Reports() {
                   <TableHead>Bank Name</TableHead>
                   <TableHead>Channel Partner</TableHead>
                   <TableHead>Lead Owner</TableHead>
+                  <TableHead>Remark</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-12">
+                    <TableCell colSpan={14} className="text-center py-12">
                       <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                       <p className="text-muted-foreground">No data found for selected filters</p>
                     </TableCell>
@@ -424,6 +425,9 @@ function Reports() {
                         {customer.connectorName || (customer.connector ? `${customer.connector.firstName} ${customer.connector.lastName}` : '-')}
                       </TableCell>
                       <TableCell className="text-sm">{customer.leadOwnerName || '-'}</TableCell>
+                      <TableCell className="text-sm max-w-[200px] truncate" title={customer.remarks?.[0]?.remark || ''}>
+                        {customer.remarks?.[0]?.remark || '-'}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

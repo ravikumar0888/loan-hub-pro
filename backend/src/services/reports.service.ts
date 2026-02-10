@@ -251,6 +251,7 @@ export class ReportsService {
       'Subvention',
       'Connector Payout',
       'Net Revenue',
+      'Remark',
     ];
 
     const rows = customers.map((customer) => {
@@ -285,6 +286,7 @@ export class ReportsService {
         customer.subventionAmount || 0,
         customer.connectorPayout?.toFixed(2) || '0.00',
         customer.netRevenue?.toFixed(2) || '0.00',
+        customer.remarks?.[0]?.remark || '',
       ];
     });
 

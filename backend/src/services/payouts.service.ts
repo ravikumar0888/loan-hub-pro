@@ -275,31 +275,37 @@ export class PayoutsService {
       },
     });
 
-    // Calculate balance for each connector
-    const balances = await Promise.all(
-      connectors.map(async (connector) => {
-        const entries = await prisma.payoutLedger.findMany({
-          where: { connectorId: connector.id },
-        });
+    // Batch query: get aggregated balances for all connectors in one query
+    const connectorIds = connectors.map(c => c.id);
 
-        const totalEarned = entries
-          .filter((e) => e.entry_type === 'credit')
-          .reduce((sum, e) => sum + Number(e.amount), 0);
+    const ledgerAggregations = await prisma.payoutLedger.groupBy({
+      by: ['connectorId', 'entry_type'],
+      where: { connectorId: { in: connectorIds } },
+      _sum: { amount: true },
+    });
 
-        const totalAdvance = entries
-          .filter((e) => e.entry_type === 'debit')
-          .reduce((sum, e) => sum + Number(e.amount), 0);
+    // Build a lookup map: connectorId -> { credit, debit }
+    const balanceMap = new Map<string, { totalEarned: number; totalAdvance: number }>();
+    for (const agg of ledgerAggregations) {
+      const existing = balanceMap.get(agg.connectorId) || { totalEarned: 0, totalAdvance: 0 };
+      if (agg.entry_type === 'credit') {
+        existing.totalEarned = Number(agg._sum.amount || 0);
+      } else if (agg.entry_type === 'debit') {
+        existing.totalAdvance = Number(agg._sum.amount || 0);
+      }
+      balanceMap.set(agg.connectorId, existing);
+    }
 
-        const currentBalance = totalEarned - totalAdvance;
-
-        return {
-          connector,
-          totalEarned,
-          totalAdvance,
-          currentBalance,
-        };
-      })
-    );
+    // Map connectors to their balances
+    const balances = connectors.map((connector) => {
+      const bal = balanceMap.get(connector.id) || { totalEarned: 0, totalAdvance: 0 };
+      return {
+        connector,
+        totalEarned: bal.totalEarned,
+        totalAdvance: bal.totalAdvance,
+        currentBalance: bal.totalEarned - bal.totalAdvance,
+      };
+    });
 
     return balances;
   }

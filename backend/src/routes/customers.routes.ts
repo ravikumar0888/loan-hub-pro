@@ -40,4 +40,7 @@ router.delete('/:id', authorize(['superadmin', 'admin']), customersController.de
 router.post('/:id/remarks', validate(addRemarkSchema), customersController.addRemark.bind(customersController));
 router.get('/:id/remarks', customersController.getCustomerRemarks.bind(customersController));
 
+// PDF generation - all authenticated users
+router.post('/:id/generate-pdf', customersController.generatePDF.bind(customersController));
+
 export default router;

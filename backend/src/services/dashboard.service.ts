@@ -78,7 +78,23 @@ export class DashboardService {
       where.createdBy = userId;
     }
 
-    // Get data for last 6 months
+    // Batch: get all 6 months of data in 2 queries instead of 12
+    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
+    const now = new Date();
+
+    // Single query for all sales in date range
+    const allCustomers = await prisma.customer.findMany({
+      where: {
+        ...where,
+        applicationDate: { gte: sixMonthsAgo, lte: now },
+      },
+      select: {
+        applicationDate: true,
+        status: true,
+      },
+    });
+
+    // Group by month in memory (much faster than 12 DB round-trips)
     const months = [];
     for (let i = 5; i >= 0; i--) {
       const date = subMonths(new Date(), i);
@@ -86,27 +102,14 @@ export class DashboardService {
       const monthEnd = new Date(monthStart);
       monthEnd.setMonth(monthEnd.getMonth() + 1);
 
-      const [sales, disbursed] = await Promise.all([
-        prisma.customer.count({
-          where: {
-            ...where,
-            applicationDate: {
-              gte: monthStart,
-              lt: monthEnd,
-            },
-          },
-        }),
-        prisma.customer.count({
-          where: {
-            ...where,
-            status: 'disbursed',
-            applicationDate: {
-              gte: monthStart,
-              lt: monthEnd,
-            },
-          },
-        }),
-      ]);
+      let sales = 0;
+      let disbursed = 0;
+      for (const c of allCustomers) {
+        if (c.applicationDate && c.applicationDate >= monthStart && c.applicationDate < monthEnd) {
+          sales++;
+          if (c.status === 'disbursed') disbursed++;
+        }
+      }
 
       months.push({
         month: format(date, 'MMM'),
@@ -263,31 +266,31 @@ export class DashboardService {
     const topLoanTypes = Array.from(loanTypeMap.values())
       .sort((a, b) => b.totalDisbursement - a.totalDisbursement);
 
+    // Collect unique user IDs needed for back office and lead owner lookups
+    const userIdsNeeded = new Set<string>();
+    customers.forEach((customer) => {
+      if (customer.createdBy) userIdsNeeded.add(customer.createdBy);
+      if (customer.leadOwner) userIdsNeeded.add(customer.leadOwner);
+    });
+
+    // Single batch query for all needed users
+    const allNeededUsers = userIdsNeeded.size > 0 ? await prisma.user.findMany({
+      where: { id: { in: Array.from(userIdsNeeded) } },
+      select: { id: true, firstName: true, lastName: true, role: true },
+    }) : [];
+    const userLookup = new Map(allNeededUsers.map(u => [u.id, u]));
+
     // Group by Back Office Users (createdBy)
     const backOfficeMap = new Map<string, { name: string; totalDisbursement: number; count: number }>();
-    const backOfficeUsers = await prisma.user.findMany({
-      where: {
-        role: 'backoffice',
-        ...(userRole !== 'master_admin' && organizationId ? { organizationId } : {}),
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
-    const backOfficeUserIds = backOfficeUsers.map(u => u.id);
-
     customers.forEach((customer) => {
-      if (customer.createdBy && backOfficeUserIds.includes(customer.createdBy)) {
-        const user = backOfficeUsers.find(u => u.id === customer.createdBy);
-        if (user) {
-          const userId = user.id;
+      if (customer.createdBy) {
+        const user = userLookup.get(customer.createdBy);
+        if (user && user.role === 'backoffice') {
           const userName = `${user.firstName} ${user.lastName}`;
-          const existing = backOfficeMap.get(userId) || { name: userName, totalDisbursement: 0, count: 0 };
+          const existing = backOfficeMap.get(user.id) || { name: userName, totalDisbursement: 0, count: 0 };
           existing.totalDisbursement += Number(customer.loanAmount);
           existing.count += 1;
-          backOfficeMap.set(userId, existing);
+          backOfficeMap.set(user.id, existing);
         }
       }
     });
@@ -296,27 +299,15 @@ export class DashboardService {
 
     // Group by Lead Owners
     const leadOwnerMap = new Map<string, { name: string; totalDisbursement: number; count: number }>();
-    const leadOwnerUsers = await prisma.user.findMany({
-      where: {
-        ...(userRole !== 'master_admin' && organizationId ? { organizationId } : {}),
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
-
     customers.forEach((customer) => {
       if (customer.leadOwner) {
-        const user = leadOwnerUsers.find(u => u.id === customer.leadOwner);
+        const user = userLookup.get(customer.leadOwner);
         if (user) {
-          const leadOwnerId = user.id;
           const leadOwnerName = `${user.firstName} ${user.lastName}`;
-          const existing = leadOwnerMap.get(leadOwnerId) || { name: leadOwnerName, totalDisbursement: 0, count: 0 };
+          const existing = leadOwnerMap.get(user.id) || { name: leadOwnerName, totalDisbursement: 0, count: 0 };
           existing.totalDisbursement += Number(customer.loanAmount);
           existing.count += 1;
-          leadOwnerMap.set(leadOwnerId, existing);
+          leadOwnerMap.set(user.id, existing);
         }
       }
     });

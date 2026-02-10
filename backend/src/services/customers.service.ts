@@ -207,7 +207,11 @@ export class CustomersService {
             },
           },
           remarks: {
-            include: {
+            select: {
+              id: true,
+              remark: true,
+              createdAt: true,
+              created_by: true,
               users: {
                 select: {
                   firstName: true,
@@ -216,7 +220,7 @@ export class CustomersService {
               },
             },
             orderBy: { createdAt: 'desc' },
-            take: 5,
+            take: 3,
           },
         },
         skip,
@@ -348,6 +352,21 @@ export class CustomersService {
       return new Date(dateStr);
     };
 
+    // Validate bank payout configuration for the selected channel partner
+    if (data.connectorId && data.bankId && data.loanType) {
+      const connector = await prisma.user.findUnique({
+        where: { id: data.connectorId },
+        select: {
+          userBankDetails: {
+            where: { bankId: data.bankId, loanType: data.loanType },
+          },
+        },
+      });
+      if (!connector?.userBankDetails || connector.userBankDetails.length === 0) {
+        throw new Error('Please configure bank for selected channel partner');
+      }
+    }
+
     let customer = await prisma.customer.create({
       data: {
         applicationId: data.applicationId,
@@ -462,34 +481,16 @@ export class CustomersService {
       }
     }
 
-    // Generate PDF for the new customer
-    try {
-      const pdfUrl = await PDFService.generateCustomerPDF(customer.id);
-      console.log(`[INFO] Generated PDF for customer ${customer.id}: ${pdfUrl}`);
-
-      // Refresh customer data to include the pdfUrl
-      customer = await prisma.customer.findUnique({
-        where: { id: customer.id },
-        include: {
-          connector: {
-            include: {
-              userBankDetails: {
-                include: {
-                  bank: true,
-                },
-              },
-            },
-          },
-          bank: true,
-          dsa: true,
-          leadOwnerUser: true,
-          creator: true,
-        },
-      }) as any;
-    } catch (pdfError) {
-      console.error(`[ERROR] Failed to generate PDF for customer ${customer.id}:`, pdfError);
-      // Don't fail the whole operation if PDF generation fails
-    }
+    // Generate PDF asynchronously (don't block the response)
+    const customerId = customer.id;
+    setImmediate(async () => {
+      try {
+        const pdfUrl = await PDFService.generateCustomerPDF(customerId);
+        console.log(`[INFO] Generated PDF for customer ${customerId}: ${pdfUrl}`);
+      } catch (pdfError) {
+        console.error(`[ERROR] Failed to generate PDF for customer ${customerId}:`, pdfError);
+      }
+    });
 
     return this.transformCustomer(customer);
   }
@@ -523,6 +524,24 @@ export class CustomersService {
     } else if (userRole === 'admin' && customer.leadOwner !== userId) {
       // Admins can ONLY update customers where they are the lead owner
       throw new Error('Forbidden - You can only update customers where you are the lead owner');
+    }
+
+    // Validate bank payout configuration for the selected channel partner
+    const effectiveConnectorId = data.connectorId || customer.connectorId;
+    const effectiveBankId = data.bankId || customer.bankId;
+    const effectiveLoanType = data.loanType || customer.loanType;
+    if (effectiveConnectorId && effectiveBankId && effectiveLoanType) {
+      const connector = await prisma.user.findUnique({
+        where: { id: effectiveConnectorId },
+        select: {
+          userBankDetails: {
+            where: { bankId: effectiveBankId, loanType: effectiveLoanType },
+          },
+        },
+      });
+      if (!connector?.userBankDetails || connector.userBankDetails.length === 0) {
+        throw new Error('Please configure bank for selected channel partner');
+      }
     }
 
     const updateData: any = {};
@@ -572,6 +591,18 @@ export class CustomersService {
     if (data.status === 'disbursed' && customer.status !== 'disbursed') {
       // Status changing TO 'disbursed' - set disbursement date
       updateData.disbursementDate = new Date();
+
+      // Delete existing PDF when status changes to disbursed
+      // User will need to regenerate PDF with final data
+      if (customer.pdfUrl) {
+        try {
+          await PDFService.deleteOldPDF(customer.pdfUrl);
+          updateData.pdfUrl = null; // Clear PDF URL in database
+        } catch (error) {
+          console.error('Error deleting PDF on disbursement:', error);
+          // Continue even if PDF deletion fails
+        }
+      }
     } else if (customer.status === 'disbursed' && data.status && data.status !== 'disbursed') {
       // Status changing FROM 'disbursed' - clear disbursement date
       updateData.disbursementDate = null;
@@ -698,32 +729,39 @@ export class CustomersService {
     }
 
     // Regenerate PDF if customer details changed
-    try {
-      const pdfUrl = await PDFService.regenerateCustomerPDF(id);
-      console.log(`[INFO] Regenerated PDF for customer ${id}: ${pdfUrl}`);
+    // BUT skip if status just changed to disbursed (PDF was intentionally deleted)
+    const statusChangedToDisbursed = data.status === 'disbursed' && customer.status !== 'disbursed';
 
-      // Refresh customer data to include the updated pdfUrl
-      updatedCustomer = await prisma.customer.findUnique({
-        where: { id },
-        include: {
-          connector: {
-            include: {
-              userBankDetails: {
-                include: {
-                  bank: true,
+    if (!statusChangedToDisbursed) {
+      try {
+        const pdfUrl = await PDFService.regenerateCustomerPDF(id);
+        console.log(`[INFO] Regenerated PDF for customer ${id}: ${pdfUrl}`);
+
+        // Refresh customer data to include the updated pdfUrl
+        updatedCustomer = await prisma.customer.findUnique({
+          where: { id },
+          include: {
+            connector: {
+              include: {
+                userBankDetails: {
+                  include: {
+                    bank: true,
+                  },
                 },
               },
             },
+            bank: true,
+            dsa: true,
+            leadOwnerUser: true,
+            creator: true,
           },
-          bank: true,
-          dsa: true,
-          leadOwnerUser: true,
-          creator: true,
-        },
-      }) as any;
-    } catch (pdfError) {
-      console.error(`[ERROR] Failed to regenerate PDF for customer ${id}:`, pdfError);
-      // Don't fail the update if PDF generation fails
+        }) as any;
+      } catch (pdfError) {
+        console.error(`[ERROR] Failed to regenerate PDF for customer ${id}:`, pdfError);
+        // Don't fail the update if PDF generation fails
+      }
+    } else {
+      console.log(`[INFO] Skipped PDF regeneration for customer ${id} - status changed to disbursed`);
     }
 
     return this.transformCustomer(updatedCustomer);
@@ -855,5 +893,23 @@ export class CustomersService {
     });
 
     return remarks;
+  }
+
+  async generatePDF(customerId: string, userId?: string, userRole?: string, organizationId?: string | null) {
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+
+    // Multi-tenant check: ensure customer belongs to user's organization
+    if (userRole !== 'master_admin' && organizationId && customer.organizationId !== organizationId) {
+      throw new Error('Forbidden - Customer not found in your organization');
+    }
+
+    // Generate new PDF
+    const pdfUrl = await PDFService.generateCustomerPDF(customerId);
+
+    return { pdfUrl };
   }
 }

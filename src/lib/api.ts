@@ -112,8 +112,10 @@ export const usersApi = {
       method: 'DELETE',
     }),
 
-  getConnectors: () =>
-    apiRequest<{ success: boolean; data: any[] }>('/users/connectors'),
+  getConnectors: (params?: { limit?: number }) => {
+    const query = params?.limit ? `?limit=${params.limit}` : '';
+    return apiRequest<{ success: boolean; data: any[] }>(`/users/connectors${query}`);
+  },
 
   getAdmins: () =>
     apiRequest<{ success: boolean; data: any[] }>('/users/admins'),
@@ -233,6 +235,11 @@ export const customersApi = {
 
   getRemarks: (id: string) =>
     apiRequest<{ success: boolean; data: any[] }>(`/customers/${id}/remarks`),
+
+  generatePDF: (id: string) =>
+    apiRequest<{ success: boolean; data: { pdfUrl: string }; message: string }>(`/customers/${id}/generate-pdf`, {
+      method: 'POST',
+    }),
 };
 
 // Dashboard API

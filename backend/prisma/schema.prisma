@@ -53,6 +53,7 @@ model Invoice {
   @@index([organizationId])
   @@index([status])
   @@index([dueDate])
+  @@index([organizationId, status, dueDate])
   @@map("invoices")
 }
 
@@ -169,6 +170,9 @@ model Customer {
   @@index([leadOwner])
   @@index([organizationId])
   @@index([status])
+  @@index([organizationId, status, applicationDate])
+  @@index([organizationId, leadOwner])
+  @@index([organizationId, createdBy])
   @@map("customers")
 }
 
