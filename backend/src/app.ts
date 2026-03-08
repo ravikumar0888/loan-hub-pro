@@ -23,6 +23,7 @@ import payoutsRoutes from './routes/payouts.routes';
 import profileRoutes from './routes/profile.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import dsaInvoiceRoutes from './routes/dsaInvoice.routes';
+import backupRoutes from './routes/backup.routes';
 
 // Import middleware
 import { authenticate } from './middleware/auth';
@@ -115,6 +116,7 @@ app.use('/api/payouts', payoutsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/dsa-invoices', dsaInvoiceRoutes);
+app.use('/api/backup', backupRoutes);
 
 // ============================================
 // ERROR HANDLING

@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { generateToken } from '../utils/jwt';
 import { AuthRequest } from '../types';
-
-const prisma = new PrismaClient();
+import prisma from '../config/database';
 
 export class AuthController {
   /**
@@ -70,11 +68,12 @@ export class AuthController {
         }
       }
 
-      // Generate JWT token
+      // Generate JWT token (includes organizationId to avoid a DB lookup on every request)
       const token = generateToken({
         userId: user.id,
         email: user.email,
         role: user.role,
+        organizationId: user.organizationId ?? null,
       });
 
       // Return user data and token

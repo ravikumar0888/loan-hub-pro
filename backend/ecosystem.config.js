@@ -2,16 +2,16 @@ module.exports = {
   apps: [{
     name: 'loanms-api',
     script: 'dist/index.js',
-    instances: 2,                    // Only 2 worker instances
+    instances: 'max',                // Use all available CPU cores
     exec_mode: 'cluster',            // Enable cluster mode
-    max_memory_restart: '300M',      // Restart if exceeds 300MB RAM
+    max_memory_restart: '800M',      // Restart if exceeds 800MB (reports can spike)
     watch: false,                    // Don't watch for file changes in production
     autorestart: true,               // Auto restart on crash
 
     // Environment variables for production
     env_production: {
       NODE_ENV: 'production',
-      NODE_OPTIONS: '--max-old-space-size=256'  // Limit Node.js heap to 256MB
+      NODE_OPTIONS: '--max-old-space-size=512'  // 512MB heap per worker
     },
 
     // Logging
@@ -21,8 +21,8 @@ module.exports = {
     merge_logs: true,
 
     // Graceful shutdown
-    kill_timeout: 5000,              // Wait 5 seconds before force kill
-    wait_ready: true,                // Wait for process.send('ready')
-    listen_timeout: 10000,           // Wait 10 seconds for app to start
+    kill_timeout: 5000,
+    wait_ready: true,
+    listen_timeout: 10000,
   }]
 };

@@ -43,4 +43,7 @@ router.get('/:id/remarks', customersController.getCustomerRemarks.bind(customers
 // PDF generation - all authenticated users
 router.post('/:id/generate-pdf', customersController.generatePDF.bind(customersController));
 
+// Duplicate customer - superadmin, admin and backoffice only
+router.post('/:id/duplicate', authorize(['superadmin', 'admin', 'backoffice']), customersController.duplicateCustomer.bind(customersController));
+
 export default router;

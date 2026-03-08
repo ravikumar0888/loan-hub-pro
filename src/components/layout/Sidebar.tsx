@@ -17,8 +17,21 @@ import {
   User,
   Receipt,
   X,
+  DatabaseBackup,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { backupApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -29,6 +42,36 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onToggle, isMobile = false }: SidebarProps) {
   const { role, logout, user } = useAuth();
   const location = useLocation();
+  const { toast } = useToast();
+  const [isBackingUp, setIsBackingUp] = React.useState(false);
+  const [showBackupDialog, setShowBackupDialog] = React.useState(false);
+  const [backupPath, setBackupPath] = React.useState('D:\\Backups');
+
+  const handleBackupClick = () => {
+    setShowBackupDialog(true);
+  };
+
+  const handleBackupConfirm = async () => {
+    if (!backupPath.trim()) {
+      toast({ title: 'Error', description: 'Please enter a valid path.', variant: 'destructive' });
+      return;
+    }
+    setShowBackupDialog(false);
+    setIsBackingUp(true);
+    try {
+      toast({ title: 'Backup Started', description: 'Generating database backup...' });
+      const result = await backupApi.downloadBackup(backupPath.trim());
+      toast({
+        title: 'Backup Complete',
+        description: `Saved: ${result.data.filePath}`,
+      });
+    } catch (error: any) {
+      toast({ title: 'Backup Failed', description: error.message || 'Failed to create backup.', variant: 'destructive' });
+    } finally {
+      setIsBackingUp(false);
+      if (isMobile) onToggle();
+    }
+  };
 
   // Map role to display name
   const getRoleDisplayName = (role: string | undefined) => {
@@ -109,148 +152,203 @@ export default function Sidebar({ collapsed, onToggle, isMobile = false }: Sideb
   }, [role]);
 
   return (
-    <aside
-      className={cn(
-        'bg-sidebar transition-all duration-300 flex flex-col shadow-xl z-50',
-        isMobile ? 'h-full w-full' : 'fixed left-0 top-0 h-screen',
-        collapsed ? 'w-20' : 'w-full sm:w-80 md:w-64',
-        !isMobile && collapsed ? 'w-20' : ''
-      )}
-    >
-      {/* Logo */}
-      <div className="flex items-center justify-between gap-3 p-4 border-b border-sidebar-border relative">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <Building2 className="w-6 h-6 text-primary-foreground" />
-          </div>
-          {!collapsed && (
-            <div className="animate-fade-in flex-1 min-w-0">
-              <h1 className="text-base sm:text-lg font-bold text-sidebar-foreground truncate">FinConnect</h1>
-              <p className="text-xs text-sidebar-foreground/60 truncate">Simplifying Lending Ecosystems</p>
+    <>
+      <aside
+        className={cn(
+          'bg-sidebar transition-all duration-300 flex flex-col shadow-xl z-50',
+          isMobile ? 'h-full w-full' : 'fixed left-0 top-0 h-screen',
+          collapsed ? 'w-20' : 'w-full sm:w-80 md:w-64',
+          !isMobile && collapsed ? 'w-20' : ''
+        )}
+      >
+        {/* Logo */}
+        <div className="flex items-center justify-between gap-3 p-4 border-b border-sidebar-border relative">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-6 h-6 text-primary-foreground" />
             </div>
+            {!collapsed && (
+              <div className="animate-fade-in flex-1 min-w-0">
+                <h1 className="text-base sm:text-lg font-bold text-sidebar-foreground truncate">FinConnect</h1>
+                <p className="text-xs text-sidebar-foreground/60 truncate">Simplifying Lending Ecosystems</p>
+              </div>
+            )}
+          </div>
+          {/* Close button on mobile - positioned for better visibility */}
+          {isMobile && !collapsed && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="w-6 h-6" />
+            </button>
           )}
         </div>
-        {/* Close button on mobile - positioned for better visibility */}
-        {isMobile && !collapsed && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onToggle();
-            }}
-            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-            aria-label="Close menu"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        )}
-      </div>
 
-      {/* User Info */}
-      {!collapsed && user && (
-        <div className="p-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-sm font-semibold text-primary">
-                {user.firstName[0]}{user.lastName[0]}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user.firstName} {user.lastName}
-              </p>
-              <p className="text-xs text-sidebar-foreground/60">{getRoleDisplayName(role)}</p>
+        {/* User Info */}
+        {!collapsed && user && (
+          <div className="p-4 border-b border-sidebar-border">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-sm font-semibold text-primary">
+                  {user.firstName[0]}{user.lastName[0]}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-sidebar-foreground/60">{getRoleDisplayName(role)}</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
-        {filteredMenuItems.length > 0 ? (
-          filteredMenuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  'sidebar-link',
-                  isActive && 'sidebar-link-active'
-                )}
-                onClick={() => {
-                  if (isMobile) {
-                    onToggle();
-                  }
-                }}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && (
-                  <span className="animate-fade-in">{item.label}</span>
-                )}
-              </NavLink>
-            );
-          })
-        ) : (
-          !collapsed && (
-            <div className="text-sidebar-foreground/60 text-sm text-center py-4">
-              {role ? 'No menu items available' : 'Loading menu...'}
-            </div>
-          )
         )}
-      </nav>
 
-      {/* Bottom Section */}
-      <div className="p-3 border-t border-sidebar-border space-y-2">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Logout button clicked'); // Debug log
-            logout();
-            if (isMobile) {
-              onToggle();
-            }
-          }}
-          className="sidebar-link w-full text-destructive hover:bg-destructive/10 min-h-[48px]"
-        >
-          <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Logout</span>}
-        </button>
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
+          {filteredMenuItems.length > 0 ? (
+            filteredMenuItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    'sidebar-link',
+                    isActive && 'sidebar-link-active'
+                  )}
+                  onClick={() => {
+                    if (isMobile) {
+                      onToggle();
+                    }
+                  }}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="animate-fade-in">{item.label}</span>
+                  )}
+                </NavLink>
+              );
+            })
+          ) : (
+            !collapsed && (
+              <div className="text-sidebar-foreground/60 text-sm text-center py-4">
+                {role ? 'No menu items available' : 'Loading menu...'}
+              </div>
+            )
+          )}
 
-        {/* Show close button on mobile, collapse toggle on desktop */}
-        {isMobile ? (
+          {/* Backup - superadmin only */}
+          {role === 'superadmin' && (
+            <button
+              type="button"
+              onClick={handleBackupClick}
+              disabled={isBackingUp}
+              className={cn(
+                'sidebar-link w-full',
+                isBackingUp && 'opacity-50 cursor-wait'
+              )}
+            >
+              <DatabaseBackup className="w-5 h-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="animate-fade-in">
+                  {isBackingUp ? 'Backing up...' : 'Backup'}
+                </span>
+              )}
+            </button>
+          )}
+        </nav>
+
+        {/* Bottom Section */}
+        <div className="p-3 border-t border-sidebar-border space-y-2">
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Bottom close button clicked'); // Debug log
-              onToggle();
+              logout();
+              if (isMobile) {
+                onToggle();
+              }
             }}
-            className="w-full h-12 flex items-center justify-center gap-2 rounded-lg text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors font-medium"
-            aria-label="Close menu"
+            className="sidebar-link w-full text-destructive hover:bg-destructive/10 min-h-[48px]"
           >
-            <X className="w-5 h-5" />
-            <span>Close Menu</span>
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && <span>Logout</span>}
           </button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggle}
-            className="w-full justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-5 h-5" />
-            ) : (
-              <ChevronLeft className="w-5 h-5" />
-            )}
-          </Button>
-        )}
-      </div>
-    </aside>
+
+          {/* Show close button on mobile, collapse toggle on desktop */}
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="w-full h-12 flex items-center justify-center gap-2 rounded-lg text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors font-medium"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+              <span>Close Menu</span>
+            </button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggle}
+              className="w-full justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            >
+              {collapsed ? (
+                <ChevronRight className="w-5 h-5" />
+              ) : (
+                <ChevronLeft className="w-5 h-5" />
+              )}
+            </Button>
+          )}
+        </div>
+      </aside>
+
+      {/* Backup Path Dialog */}
+      <Dialog open={showBackupDialog} onOpenChange={setShowBackupDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Database Backup</DialogTitle>
+            <DialogDescription>
+              Enter the folder path where you want to save the backup file.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="backupPath">Save Location</Label>
+            <Input
+              id="backupPath"
+              value={backupPath}
+              onChange={(e) => setBackupPath(e.target.value)}
+              placeholder="e.g., D:\Backups"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleBackupConfirm();
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              The folder will be created if it doesn't exist.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBackupDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBackupConfirm} disabled={!backupPath.trim()}>
+              Start Backup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

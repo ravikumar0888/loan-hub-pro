@@ -912,4 +912,78 @@ export class CustomersService {
 
     return { pdfUrl };
   }
+
+  async duplicateCustomer(customerId: string, userId?: string, userRole?: string, organizationId?: string | null) {
+    // Only superadmin, admin, backoffice can duplicate
+    if (userRole === 'connector') {
+      throw new Error('Connectors are not allowed to duplicate customers');
+    }
+
+    const original = await prisma.customer.findUnique({ where: { id: customerId } });
+
+    if (!original) {
+      throw new Error('Customer not found');
+    }
+
+    // Multi-tenant check
+    if (userRole !== 'master_admin' && organizationId && original.organizationId !== organizationId) {
+      throw new Error('Forbidden - Customer not found in your organization');
+    }
+
+    // Create duplicate: copy personal, professional, address, reference details
+    // Blank out loan details tab fields + reset status
+    const duplicate = await prisma.customer.create({
+      data: {
+        // Personal details (copied)
+        name: original.name,
+        mobile: original.mobile,
+        personalEmail: original.personalEmail,
+        panNo: original.panNo,
+        date_of_birth: original.date_of_birth,
+        motherName: original.motherName,
+        spouseName: original.spouseName,
+        qualification: original.qualification,
+        maritalStatus: original.maritalStatus,
+        // Professional details (copied)
+        employmentType: original.employmentType,
+        currentCompany: original.currentCompany,
+        totalWorkExperience: original.totalWorkExperience,
+        current_company_exp: original.current_company_exp,
+        officialEmail: original.officialEmail,
+        companyAddress: original.companyAddress,
+        // Address details (copied)
+        homeType: original.homeType,
+        currentAddress: original.currentAddress,
+        postalAddress: original.postalAddress,
+        // Reference & Nominee (copied)
+        reference1Name: original.reference1Name,
+        reference1Mobile: original.reference1Mobile,
+        reference1Address: original.reference1Address,
+        reference2Name: original.reference2Name,
+        reference2Mobile: original.reference2Mobile,
+        reference2Address: original.reference2Address,
+        nomineeName: original.nomineeName,
+        nomineeRelation: original.nomineeRelation,
+        nomineeDateOfBirth: original.nomineeDateOfBirth,
+        // Loan details - BLANK
+        loanType: 'PL', // Required field, default to PL
+        loanAmount: 0,   // Required field, default to 0
+        // connectorId, dsaId, bankId, leadOwner, salesManager, caseType, tenure, location, subventionAmount = null/blank
+        // New date + status
+        applicationDate: new Date(),
+        status: 'login',
+        // Organization + creator
+        organizationId: original.organizationId,
+        createdBy: userId,
+      },
+      include: {
+        connector: { select: { id: true, firstName: true, lastName: true } },
+        dsa: { select: { id: true, name: true } },
+        bank: { select: { id: true, name: true } },
+        remarks: true,
+      },
+    });
+
+    return this.transformCustomer(duplicate);
+  }
 }

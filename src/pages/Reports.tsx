@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Customer } from '@/types';
+import { LoanStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -24,10 +24,8 @@ import { FileSpreadsheet, Download, Filter, RefreshCw, Loader2, Search, ChevronL
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { LoanStatus } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi, usersApi, dsasApi, banksApi } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import { withAdminPasswordProtection } from '@/components/hoc/withAdminPasswordProtection';
 
 const statusStyles: Record<LoanStatus, string> = {
@@ -42,7 +40,6 @@ const statusStyles: Record<LoanStatus, string> = {
 
 function Reports() {
   const { toast } = useToast();
-  const { role } = useAuth();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
@@ -50,6 +47,7 @@ function Reports() {
   const [selectedDSA, setSelectedDSA] = useState<string>('all');
   const [selectedConnector, setSelectedConnector] = useState<string>('all');
   const [selectedBank, setSelectedBank] = useState<string>('all');
+  const [selectedLeadOwner, setSelectedLeadOwner] = useState<string>('all');
 
   // Table search, filter, and pagination state
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,7 +57,7 @@ function Reports() {
 
   // Fetch report data from backend
   const { data: reportData, isLoading: isLoadingReport } = useQuery({
-    queryKey: ['reports', dateRange, selectedDSA, selectedConnector, selectedBank],
+    queryKey: ['reports', dateRange, selectedDSA, selectedConnector, selectedBank, selectedLeadOwner],
     queryFn: async () => {
       const params: any = {};
       if (dateRange.from) params.startDate = dateRange.from.toISOString();
@@ -67,6 +65,7 @@ function Reports() {
       if (selectedDSA !== 'all') params.dsaId = selectedDSA;
       if (selectedConnector !== 'all') params.connectorId = selectedConnector;
       if (selectedBank !== 'all') params.bankId = selectedBank;
+      if (selectedLeadOwner !== 'all') params.leadOwnerId = selectedLeadOwner;
 
       const response = await reportsApi.generateReport(params);
       return response.data;
@@ -100,10 +99,23 @@ function Reports() {
     },
   });
 
+  // Fetch Admins for Lead Owner dropdown
+  const { data: adminsData } = useQuery({
+    queryKey: ['admins'],
+    queryFn: async () => {
+      const response = await usersApi.getAdmins();
+      return response.data;
+    },
+  });
+
   const connectors = connectorsData || [];
   const dsas = dsasData || [];
   const banks = banksData || [];
+  const admins = adminsData || [];
   const reportList = reportData || [];
+
+  const formatINR = (amount: number) =>
+    new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   // Client-side search and status filtering
   const filteredData = reportList.filter((customer: any) => {
@@ -113,7 +125,8 @@ function Reports() {
       customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.applicationId?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesLeadOwner = selectedLeadOwner === 'all' || customer.leadOwner === selectedLeadOwner;
+    return matchesSearch && matchesStatus && matchesLeadOwner;
   });
 
   // Pagination
@@ -137,6 +150,7 @@ function Reports() {
       if (selectedDSA !== 'all') params.dsaId = selectedDSA;
       if (selectedConnector !== 'all') params.connectorId = selectedConnector;
       if (selectedBank !== 'all') params.bankId = selectedBank;
+      if (selectedLeadOwner !== 'all') params.leadOwnerId = selectedLeadOwner;
 
       // Call backend export API to get CSV with all financial calculations
       const blob = await reportsApi.exportReport(params);
@@ -180,6 +194,7 @@ function Reports() {
     setSelectedDSA('all');
     setSelectedConnector('all');
     setSelectedBank('all');
+    setSelectedLeadOwner('all');
     setSearchQuery('');
     setStatusFilter('all');
     setCurrentPage(1);
@@ -213,7 +228,7 @@ function Reports() {
           Filters
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
           <div className="space-y-2">
             <Label>Date Range</Label>
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
@@ -270,6 +285,23 @@ function Reports() {
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label>Lead Owner</Label>
+            <Select value={selectedLeadOwner} onValueChange={setSelectedLeadOwner}>
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="All Lead Owners" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border">
+                <SelectItem value="all">All Lead Owners</SelectItem>
+                {admins.map((admin: any) => (
+                  <SelectItem key={admin.id} value={admin.id}>
+                    {admin.firstName} {admin.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <Button variant="outline" onClick={handleReset} className="w-full h-10">
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -288,19 +320,19 @@ function Reports() {
         <div className="bg-card rounded-xl p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Total Loan Amount</p>
           <p className="text-3xl font-bold text-foreground mt-1">
-            ₹{totalAmount.toLocaleString('en-IN')}
+            ₹{formatINR(totalAmount)}
           </p>
         </div>
         <div className="bg-card rounded-xl p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Disbursed Amount</p>
           <p className="text-3xl font-bold text-success mt-1">
-            ₹{disbursedAmount.toLocaleString('en-IN')}
+            ₹{formatINR(disbursedAmount)}
           </p>
         </div>
         <div className="bg-card rounded-xl p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Total Payout</p>
           <p className="text-3xl font-bold text-accent mt-1">
-            ₹{totalPayout.toLocaleString('en-IN')}
+            ₹{formatINR(totalPayout)}
           </p>
         </div>
       </div>
@@ -400,11 +432,11 @@ function Reports() {
                         <Badge variant="outline" className="font-medium">{customer.loanType}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ₹{Number(customer.loanAmount).toLocaleString('en-IN')}
+                        ₹{formatINR(Number(customer.loanAmount))}
                       </TableCell>
                       <TableCell className="font-medium text-accent">
                         {customer.status === 'disbursed' && customer.connectorPayout > 0
-                          ? `₹${Number(customer.connectorPayout).toLocaleString('en-IN')}`
+                          ? `₹${formatINR(Number(customer.connectorPayout))}`
                           : '-'}
                       </TableCell>
                       <TableCell>

@@ -100,6 +100,8 @@ model User {
   @@index([role])
   @@index([organizationId])
   @@index([createdBy])
+  @@index([organizationId, role])
+  @@index([organizationId, isActive])
   @@map("users")
 }
 
@@ -173,6 +175,9 @@ model Customer {
   @@index([organizationId, status, applicationDate])
   @@index([organizationId, leadOwner])
   @@index([organizationId, createdBy])
+  @@index([organizationId, connectorId])
+  @@index([organizationId, bankId])
+  @@index([organizationId, dsaId])
   @@map("customers")
 }
 
@@ -267,6 +272,7 @@ model PayoutLedger {
   @@index([connectorId])
   @@index([connectorId, month, year])
   @@index([entry_type])
+  @@index([connectorId, entry_type])
   @@map("payout_ledger")
 }
 

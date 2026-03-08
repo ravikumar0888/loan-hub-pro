@@ -20,7 +20,8 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(taskkill:*)",
-      "Bash(timeout 3 bash:*)"
+      "Bash(timeout 3 bash:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

@@ -20,7 +20,17 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, ChevronRight } from 'lucide-react';
+import { Loader2, Download, ChevronRight, Copy } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Customer, LoanType, LoanStatus, HomeType, CaseType, MaritalStatus, EmploymentType } from '@/types';
 import { format } from 'date-fns';
@@ -34,6 +44,8 @@ interface CustomerFormDialogProps {
   customer?: Customer | null;
   mode: 'add' | 'edit' | 'view';
   onSave: (customer: Customer) => void;
+  onDuplicate?: (prefillData: any) => void;
+  prefillData?: any;
 }
 
 const TAB_ORDER = ['personal', 'loan', 'professional', 'address', 'reference', 'remarks'];
@@ -91,6 +103,8 @@ export default function CustomerFormDialog({
   customer,
   mode,
   onSave,
+  onDuplicate,
+  prefillData,
 }: CustomerFormDialogProps) {
   const { role } = useAuth();
   const { toast } = useToast();
@@ -100,6 +114,7 @@ export default function CustomerFormDialog({
   const [formData, setFormData] = useState(emptyFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState('personal');
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
 
   // Fetch connectors from backend
   const { data: connectorsData } = useQuery({
@@ -247,11 +262,52 @@ export default function CustomerFormDialog({
         pdfUrl: customer.pdfUrl || '',
       });
     } else if (mode === 'add') {
-      setFormData(emptyFormData);
+      if (prefillData) {
+        // Duplicate mode: pre-fill personal/professional/address/reference, blank loan
+        setFormData({
+          ...emptyFormData,
+          applicationDate: new Date(),
+          // Personal
+          name: prefillData.name || '',
+          panNo: prefillData.panNo || '',
+          dateOfBirth: prefillData.dateOfBirth ? new Date(prefillData.dateOfBirth) : null,
+          motherName: prefillData.motherName || '',
+          spouseName: prefillData.spouseName || '',
+          mobile: prefillData.mobile || '',
+          personalEmail: prefillData.personalEmail || '',
+          qualification: prefillData.qualification || '',
+          maritalStatus: prefillData.maritalStatus || '',
+          // Professional
+          employmentType: prefillData.employmentType || '',
+          currentCompany: prefillData.currentCompany || '',
+          totalWorkExperience: prefillData.totalWorkExperience || '',
+          currentCompanyExperience: prefillData.currentCompanyExperience || '',
+          officialEmail: prefillData.officialEmail || '',
+          companyAddress: prefillData.companyAddress || '',
+          // Address
+          homeType: prefillData.homeType || 'own',
+          currentAddress: prefillData.currentAddress || '',
+          postalAddress: prefillData.postalAddress || '',
+          // Reference & Nominee
+          reference1Name: prefillData.reference1Name || '',
+          reference1Mobile: prefillData.reference1Mobile || '',
+          reference1Address: prefillData.reference1Address || '',
+          reference2Name: prefillData.reference2Name || '',
+          reference2Mobile: prefillData.reference2Mobile || '',
+          reference2Address: prefillData.reference2Address || '',
+          nomineeName: prefillData.nomineeName || '',
+          nomineeRelation: prefillData.nomineeRelation || '',
+          nomineeDateOfBirth: prefillData.nomineeDateOfBirth ? new Date(prefillData.nomineeDateOfBirth) : null,
+        });
+        setActiveTab('loan');
+      } else {
+        setFormData(emptyFormData);
+        setActiveTab('personal');
+      }
     }
     setErrors({});
-    setActiveTab('personal');
-  }, [customer, mode, open]);
+    if (!prefillData) setActiveTab('personal');
+  }, [customer, mode, open, prefillData]);
 
   // Validation for each tab
   const validateTab = (tab: string): boolean => {
@@ -491,6 +547,50 @@ export default function CustomerFormDialog({
 
   const isLastTab = activeTab === 'remarks';
 
+  const canDuplicate = mode === 'edit' && customer?.id && (role === 'superadmin' || role === 'admin' || role === 'backoffice');
+
+  const handleDuplicateConfirm = () => {
+    if (!customer) return;
+    // Build pre-filled data: copy personal, professional, address, reference — blank loan fields
+    const prefillData = {
+      // Personal (copied)
+      name: customer.name || '',
+      panNo: customer.panNo || '',
+      dateOfBirth: customer.dateOfBirth || null,
+      motherName: customer.motherName || '',
+      spouseName: customer.spouseName || '',
+      mobile: customer.mobile || '',
+      personalEmail: customer.personalEmail || '',
+      qualification: (customer as any).qualification || '',
+      maritalStatus: (customer as any).maritalStatus || '',
+      // Professional (copied)
+      employmentType: (customer as any).employmentType || '',
+      currentCompany: customer.currentCompany || '',
+      totalWorkExperience: customer.totalWorkExperience || '',
+      currentCompanyExperience: customer.currentCompanyExperience || '',
+      officialEmail: customer.officialEmail || '',
+      companyAddress: (customer as any).companyAddress || '',
+      // Address (copied)
+      homeType: customer.homeType || 'own',
+      currentAddress: customer.currentAddress || '',
+      postalAddress: customer.postalAddress || '',
+      // Reference & Nominee (copied)
+      reference1Name: customer.reference1?.name || '',
+      reference1Mobile: customer.reference1?.mobile || '',
+      reference1Address: customer.reference1?.address || '',
+      reference2Name: customer.reference2?.name || '',
+      reference2Mobile: customer.reference2?.mobile || '',
+      reference2Address: customer.reference2?.address || '',
+      nomineeName: customer.nomineeName || '',
+      nomineeRelation: customer.nomineeRelation || '',
+      nomineeDateOfBirth: customer.nomineeDateOfBirth || null,
+    };
+    setShowDuplicateConfirm(false);
+    if (onDuplicate) {
+      onDuplicate(prefillData);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-[100vw] sm:max-w-[95vw] md:max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden bg-card p-0 rounded-none sm:rounded-lg flex flex-col">
@@ -581,12 +681,22 @@ export default function CustomerFormDialog({
 
                 {renderField('spouseName', 'Spouse Name', formData.spouseName, (v) => setFormData({ ...formData, spouseName: v }))}
 
-                {renderField('mobile', 'Mobile Number', formData.mobile, (v) => setFormData({ ...formData, mobile: v }), {
-                  required: true,
-                  placeholder: '10 digit mobile',
-                  maxLength: 10,
-                  error: errors.mobile,
-                })}
+                {/* Mobile Number - masked for backoffice after disbursement */}
+                {role === 'backoffice' && customer?.status === 'disbursed' ? (
+                  <div className="space-y-2">
+                    <Label>Mobile Number *</Label>
+                    <div className="p-2 bg-muted rounded-md text-sm tracking-wider">
+                      {'X'.repeat(Math.max(0, (formData.mobile || '').length - 4)) + (formData.mobile || '').slice(-4)}
+                    </div>
+                  </div>
+                ) : (
+                  renderField('mobile', 'Mobile Number', formData.mobile, (v) => setFormData({ ...formData, mobile: v }), {
+                    required: true,
+                    placeholder: '10 digit mobile',
+                    maxLength: 10,
+                    error: errors.mobile,
+                  })
+                )}
 
                 {renderField('personalEmail', 'Personal Email Id', formData.personalEmail, (v) => setFormData({ ...formData, personalEmail: v }), {
                   required: true,
@@ -728,14 +838,14 @@ export default function CustomerFormDialog({
                     <Label>Calculated Payout</Label>
                     <div className={`p-3 rounded-md text-sm font-medium ${calculatedPayout !== null ? 'bg-success/10 text-success border border-success/20' : 'bg-muted text-muted-foreground'}`}>
                       {calculatedPayout !== null ? (
-                        <>₹{Math.round(calculatedPayout).toLocaleString('en-IN')}</>
+                        <>₹{new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(calculatedPayout)}</>
                       ) : (
                         <span className="text-xs">Select Channel Partner, Bank & Loan Type to calculate</span>
                       )}
                     </div>
                     {calculatedPayout !== null && formData.hasSubvention && Number(formData.subventionAmount) > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        (After ₹{Number(formData.subventionAmount).toLocaleString('en-IN')} subvention deduction)
+                        (After ₹{new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(formData.subventionAmount))} subvention deduction)
                       </p>
                     )}
                   </div>
@@ -1149,6 +1259,23 @@ export default function CustomerFormDialog({
                 ) : null}
               </div>
 
+              {/* Duplicate Entry Checkbox */}
+              {canDuplicate && (
+                <div className="flex items-center space-x-2 p-3 sm:p-3 bg-muted/30 rounded-lg border border-border">
+                  <input
+                    type="checkbox"
+                    id="duplicateEntry"
+                    checked={false}
+                    onChange={() => setShowDuplicateConfirm(true)}
+                    className="w-5 h-5 sm:w-4 sm:h-4 border border-border rounded flex-shrink-0"
+                  />
+                  <Label htmlFor="duplicateEntry" className="cursor-pointer text-sm flex items-center gap-2">
+                    <Copy className="w-4 h-4" />
+                    Do you want Duplicate entry?
+                  </Label>
+                </div>
+              )}
+
               {/* Loan Status */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-primary">Loan Status</h4>
@@ -1264,6 +1391,26 @@ export default function CustomerFormDialog({
           </form>
         </Tabs>
       </DialogContent>
+
+      {/* Duplicate Confirmation Dialog */}
+      <AlertDialog open={showDuplicateConfirm} onOpenChange={setShowDuplicateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Duplicate Entry</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a duplicate entry of <strong>{customer?.name}</strong> with the current date.
+              The Loan Details will be blank and you will need to fill them in.
+              The original entry will remain unchanged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicateConfirm}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

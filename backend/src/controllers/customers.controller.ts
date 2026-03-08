@@ -168,4 +168,24 @@ export class CustomersController {
       next(error);
     }
   }
+
+  async duplicateCustomer(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const customer = await customersService.duplicateCustomer(
+        id,
+        req.user?.userId,
+        req.user?.role,
+        req.organizationId
+      );
+
+      res.status(201).json({
+        success: true,
+        data: customer,
+        message: 'Customer duplicated successfully',
+      });
+    } catch (error: any) {
+      next(error);
+    }
+  }
 }

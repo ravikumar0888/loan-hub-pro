@@ -32,23 +32,24 @@ export class DashboardService {
       }
     }
 
-    const [
-      login,
-      rejected,
-      approved,
-      disbursed,
-      hold,
-      relook,
-      drop,
-    ] = await Promise.all([
-      prisma.customer.count({ where: { ...where, status: 'login' } }),
-      prisma.customer.count({ where: { ...where, status: 'rejected' } }),
-      prisma.customer.count({ where: { ...where, status: 'approved' } }),
-      prisma.customer.count({ where: { ...where, status: 'disbursed' } }),
-      prisma.customer.count({ where: { ...where, status: 'hold' } }),
-      prisma.customer.count({ where: { ...where, status: 'relook' } }),
-      prisma.customer.count({ where: { ...where, status: 'drop' } }),
-    ]);
+    // Single groupBy query replaces 7 separate count() calls
+    const statusCounts = await prisma.customer.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    });
+
+    const counts = Object.fromEntries(
+      statusCounts.map((s) => [s.status, s._count.status])
+    );
+
+    const login    = counts['login']    ?? 0;
+    const rejected = counts['rejected'] ?? 0;
+    const approved = counts['approved'] ?? 0;
+    const disbursed = counts['disbursed'] ?? 0;
+    const hold     = counts['hold']     ?? 0;
+    const relook   = counts['relook']   ?? 0;
+    const drop     = counts['drop']     ?? 0;
 
     return {
       login,

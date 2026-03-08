@@ -1,6 +1,7 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { RequestHandler } from 'express';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // Ensure upload directory exists
 const uploadDir = path.join(__dirname, '../../public/uploads/profiles');
@@ -26,7 +27,7 @@ const fileFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-export const uploadProfilePhoto = multer({
+export const uploadProfilePhoto: RequestHandler = multer({
   storage,
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB

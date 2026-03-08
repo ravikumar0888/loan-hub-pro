@@ -240,6 +240,11 @@ export const customersApi = {
     apiRequest<{ success: boolean; data: { pdfUrl: string }; message: string }>(`/customers/${id}/generate-pdf`, {
       method: 'POST',
     }),
+
+  duplicateCustomer: (id: string) =>
+    apiRequest<{ success: boolean; data: any; message: string }>(`/customers/${id}/duplicate`, {
+      method: 'POST',
+    }),
 };
 
 // Dashboard API
@@ -544,4 +549,16 @@ export const dsaInvoiceApi = {
     apiRequest<{ success: boolean; message: string }>(`/dsa-invoices/${id}`, {
       method: 'DELETE',
     }),
+};
+
+// Backup API
+export const backupApi = {
+  downloadBackup: (savePath: string) =>
+    apiRequest<{ success: boolean; data: { filePath: string; fileName: string }; message: string }>(
+      '/backup/download',
+      {
+        method: 'POST',
+        body: JSON.stringify({ savePath }),
+      }
+    ),
 };

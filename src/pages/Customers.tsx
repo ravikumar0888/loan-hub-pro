@@ -16,6 +16,7 @@ export default function Customers() {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formMode, setFormMode] = useState<'add' | 'edit' | 'view'>('add');
+  const [duplicatePrefill, setDuplicatePrefill] = useState<any>(null);
 
   // Fetch customers from backend
   const { data: customersData, isLoading: isLoadingCustomers } = useQuery({
@@ -99,20 +100,34 @@ export default function Customers() {
 
   const handleAddNew = () => {
     setSelectedCustomer(null);
+    setDuplicatePrefill(null);
     setFormMode('add');
     setIsFormDialogOpen(true);
   };
 
   const handleView = (customer: Customer) => {
     setSelectedCustomer(customer);
+    setDuplicatePrefill(null);
     setFormMode('view');
     setIsFormDialogOpen(true);
   };
 
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer);
+    setDuplicatePrefill(null);
     setFormMode('edit');
     setIsFormDialogOpen(true);
+  };
+
+  const handleDuplicate = (prefillData: any) => {
+    // Close current dialog, then open a new "add" form pre-filled with copied data
+    setIsFormDialogOpen(false);
+    setTimeout(() => {
+      setSelectedCustomer(null);
+      setDuplicatePrefill(prefillData);
+      setFormMode('add');
+      setIsFormDialogOpen(true);
+    }, 300);
   };
 
   const canAddCustomer = role === 'superadmin' || role === 'admin' || role === 'backoffice';
@@ -155,6 +170,8 @@ export default function Customers() {
         customer={selectedCustomer}
         mode={formMode}
         onSave={handleSaveCustomer}
+        onDuplicate={handleDuplicate}
+        prefillData={duplicatePrefill}
       />
     </div>
   );

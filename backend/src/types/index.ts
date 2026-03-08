@@ -16,6 +16,7 @@ export interface AuthUser {
   userId: string;
   email: string;
   role: UserRole;
+  organizationId?: string | null;
 }
 
 export interface AuthRequest extends Request {
@@ -160,4 +161,5 @@ export interface ReportQuery extends PaginationQuery {
   dsaId?: string;
   bankId?: string;
   status?: LoanStatus;
+  leadOwnerId?: string;
 }

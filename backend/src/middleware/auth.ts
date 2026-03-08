@@ -29,6 +29,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
       userId: decoded.userId,
       email: decoded.email,
       role: decoded.role,
+      organizationId: decoded.organizationId ?? null,
     };
 
     next();
