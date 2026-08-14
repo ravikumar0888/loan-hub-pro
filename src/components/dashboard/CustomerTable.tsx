@@ -34,6 +34,7 @@ interface CustomerTableProps {
   customers: Customer[];
   onView?: (customer: Customer) => void;
   onEdit?: (customer: Customer) => void;
+  showEditButton?: boolean;
 }
 
 const statusStyles: Record<LoanStatus, string> = {
@@ -99,7 +100,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search customers..."
+              placeholder="Search by name, mobile, or application ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -246,6 +247,7 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead>App ID</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Application ID</TableHead>
               <TableHead>Customer</TableHead>
@@ -275,6 +277,9 @@ export default function CustomerTable({ customers, onView, onEdit }: CustomerTab
             ) : (
               paginatedCustomers.map((customer) => (
                 <TableRow key={customer.id} className="table-row-hover">
+                  <TableCell className="text-sm font-mono text-primary">
+                    {customer.applicationId || '-'}
+                  </TableCell>
                   <TableCell className="text-sm">
                     {format(new Date(customer.applicationDate || customer.date || customer.createdAt), 'MMM dd, yyyy')}
                   </TableCell>

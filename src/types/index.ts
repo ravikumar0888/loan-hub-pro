@@ -133,6 +133,8 @@ export interface BankDetail {
 
 export interface Reference {
   name: string;
+  motherName: string;
+  spouseName: string;
   mobile: string;
   address: string;
 }
