@@ -133,12 +133,14 @@ app.use((req, res) => {
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   logger.error(`${req.method} ${req.url} - ${err.message}`);
 
-  // Prisma errors
+  // Prisma errors - message contains raw DB detail (table/column/constraint
+  // names) that no application code intentionally wrote for end users, so
+  // it's only shown in development, unlike the default branch below.
   if (err.code && err.code.startsWith('P')) {
     return res.status(400).json({
       success: false,
       error: 'Database error',
-      message: err.message,
+      ...(process.env.NODE_ENV === 'development' && { message: err.message }),
     });
   }
 
