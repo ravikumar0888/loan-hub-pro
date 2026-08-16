@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,24 +10,24 @@ import { AdminPasswordVerificationProvider } from "@/contexts/AdminPasswordVerif
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { BillingProvider } from "@/contexts/BillingContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import LoginPage from "./components/auth/LoginPage";
-import ForgotPasswordPage from "./components/auth/ForgotPasswordPage";
-import ResetPasswordPage from "./components/auth/ResetPasswordPage";
-import SignupPage from "./pages/Signup";
 import DashboardLayout from "./components/layout/DashboardLayout";
-import Dashboard from "./pages/Dashboard";
-import Customers from "./pages/Customers";
-import Banks from "./pages/Banks";
-import Users from "./pages/Users";
-import DSAPage from "./pages/DSA";
-import DsaInvoices from "./pages/DsaInvoices";
-import Reports from "./pages/Reports";
-import Payouts from "./pages/Payouts";
-import Profile from "./pages/Profile";
-import MasterAdminDashboard from "./pages/MasterAdmin";
+
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const LoginPage = lazy(() => import("./components/auth/LoginPage"));
+const ForgotPasswordPage = lazy(() => import("./components/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./components/auth/ResetPasswordPage"));
+const SignupPage = lazy(() => import("./pages/Signup"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Customers = lazy(() => import("./pages/Customers"));
+const Banks = lazy(() => import("./pages/Banks"));
+const Users = lazy(() => import("./pages/Users"));
+const DSAPage = lazy(() => import("./pages/DSA"));
+const DsaInvoices = lazy(() => import("./pages/DsaInvoices"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Payouts = lazy(() => import("./pages/Payouts"));
+const Profile = lazy(() => import("./pages/Profile"));
+const MasterAdminDashboard = lazy(() => import("./pages/MasterAdmin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,11 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
 function AppRoutes() {
   return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<LoginPage />} />
@@ -179,6 +185,7 @@ function AppRoutes() {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 }
 
