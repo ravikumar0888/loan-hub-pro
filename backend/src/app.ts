@@ -33,6 +33,11 @@ import { organizationContext } from './middleware/organizationContext';
 // Create Express app
 const app: Application = express();
 
+// Trust the first hop reverse proxy (Apache/nginx) for correct client IP
+// detection - required for express-rate-limit to key on the real client
+// IP instead of the proxy's loopback address.
+app.set('trust proxy', 1);
+
 // ============================================
 // MIDDLEWARE
 // ============================================
