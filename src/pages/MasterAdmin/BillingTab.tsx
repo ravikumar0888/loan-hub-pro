@@ -33,6 +33,7 @@ import { InvoiceStatus } from '@/types';
 import { toast } from 'sonner';
 import { format, addDays } from 'date-fns';
 import { invoicesApi } from '@/lib/api';
+import { openAuthenticatedEndpoint } from '@/lib/downloadFile';
 
 export default function BillingTab() {
   const { invoices, createInvoice, updateInvoiceStatus, refetch } = useBilling();
@@ -97,19 +98,8 @@ export default function BillingTab() {
   const handleDownloadInvoice = async (invoiceId: string) => {
     try {
       toast.loading('Generating PDF...');
-      const response = await invoicesApi.download(invoiceId);
+      await openAuthenticatedEndpoint(`/invoices/${invoiceId}/download`);
       toast.dismiss();
-
-      // Construct proper PDF URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
-      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-        baseUrl = `https://${baseUrl}`;
-      }
-      const pdfPath = response.data.pdfUrl.startsWith('/') ? response.data.pdfUrl : `/${response.data.pdfUrl}`;
-      const pdfUrl = `${baseUrl}${pdfPath}`;
-      window.open(pdfUrl, '_blank');
-
       toast.success('Invoice downloaded successfully');
     } catch (error: any) {
       toast.dismiss();

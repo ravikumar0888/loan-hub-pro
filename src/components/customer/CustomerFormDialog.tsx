@@ -36,6 +36,7 @@ import { Customer, LoanType, LoanStatus, HomeType, CaseType, MaritalStatus, Empl
 import { format } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, banksApi, dsasApi, customersApi } from '@/lib/api';
+import { openAuthenticatedFile } from '@/lib/downloadFile';
 import { FileText } from 'lucide-react';
 
 interface CustomerFormDialogProps {
@@ -1193,18 +1194,11 @@ export default function CustomerFormDialog({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      // Construct proper PDF URL
-                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-                      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
-                      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-                        baseUrl = `https://${baseUrl}`;
-                      }
+                    onClick={async () => {
                       const pdfPath = customer.pdfUrl?.startsWith('/pdfs/')
                         ? customer.pdfUrl
                         : `/pdfs/${customer.pdfUrl?.split('/pdfs/').pop() || ''}`;
-                      const pdfUrl = `${baseUrl}${pdfPath}`;
-                      window.open(pdfUrl, '_blank');
+                      await openAuthenticatedFile(pdfPath);
                     }}
                     className="gap-2"
                   >
@@ -1230,12 +1224,7 @@ export default function CustomerFormDialog({
                           // Refresh customer data to get new pdfUrl
                           queryClient.invalidateQueries({ queryKey: ['customers'] });
                           // Open the PDF
-                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-                          let baseUrl = apiUrl.replace(/\/api\/?$/, '');
-                          if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-                            baseUrl = `https://${baseUrl}`;
-                          }
-                          window.open(`${baseUrl}${response.data.pdfUrl}`, '_blank');
+                          await openAuthenticatedFile(response.data.pdfUrl);
                         }
                       } catch (error: any) {
                         toast({

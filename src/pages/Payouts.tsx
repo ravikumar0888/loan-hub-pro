@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { payoutsApi, usersApi } from '@/lib/api';
+import { openAuthenticatedFile } from '@/lib/downloadFile';
 import { User } from '@/types';
 
 interface ConnectorBalanceWithUser {
@@ -224,15 +225,8 @@ function Payouts() {
 
     try {
       const result = await payoutsApi.generatePayoutPDF({ connectorId: selectedConnector, month, year });
-      // Construct proper PDF URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
-      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-        baseUrl = `https://${baseUrl}`;
-      }
       const pdfPath = result.data.pdfUrl.startsWith('/') ? result.data.pdfUrl : `/${result.data.pdfUrl}`;
-      const pdfUrl = `${baseUrl}${pdfPath}`;
-      window.open(pdfUrl, '_blank');
+      await openAuthenticatedFile(pdfPath);
 
       toast({
         title: 'Success',

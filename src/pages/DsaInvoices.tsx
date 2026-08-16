@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dsaInvoiceApi, dsasApi } from '@/lib/api';
+import { openAuthenticatedFile } from '@/lib/downloadFile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -163,17 +164,10 @@ function DsaInvoices() {
     setIsViewDialogOpen(true);
   };
 
-  const handleDownloadPDF = (invoice: any) => {
+  const handleDownloadPDF = async (invoice: any) => {
     if (invoice.pdfUrl) {
-      // Construct proper PDF URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      let baseUrl = apiUrl.replace(/\/api\/?$/, '');
-      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-        baseUrl = `https://${baseUrl}`;
-      }
       const pdfPath = invoice.pdfUrl.startsWith('/') ? invoice.pdfUrl : `/${invoice.pdfUrl}`;
-      const pdfUrl = `${baseUrl}${pdfPath}`;
-      window.open(pdfUrl, '_blank');
+      await openAuthenticatedFile(pdfPath);
     }
   };
 

@@ -24,6 +24,7 @@ import profileRoutes from './routes/profile.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import dsaInvoiceRoutes from './routes/dsaInvoice.routes';
 import backupRoutes from './routes/backup.routes';
+import filesRoutes from './routes/files.routes';
 
 // Import middleware
 import { authenticate } from './middleware/auth';
@@ -55,10 +56,6 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api', apiLimiter);
-
-// Static files (for uploads and PDFs)
-app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
-app.use('/pdfs', express.static(path.join(process.cwd(), 'public/pdfs')));
 
 // Disable caching for all API routes
 app.use('/api', (req, res, next) => {
@@ -117,6 +114,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/dsa-invoices', dsaInvoiceRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/files', filesRoutes);
 
 // ============================================
 // ERROR HANDLING

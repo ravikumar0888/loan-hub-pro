@@ -99,12 +99,17 @@ export class InvoicesController {
         req.organizationId
       );
 
-      // Send the PDF file path as response
-      res.json({
-        success: true,
-        data: { pdfUrl: pdfPath },
-        message: 'Invoice PDF generated successfully',
-      });
+      const path = await import('path');
+      const fs = await import('fs');
+      const filePath = path.join(process.cwd(), 'public', pdfPath.replace(/^\//, ''));
+
+      if (!fs.existsSync(filePath)) {
+        res.status(404).json({ success: false, error: 'Generated PDF not found' });
+        return;
+      }
+
+      res.type('application/pdf');
+      res.sendFile(filePath);
     } catch (error: any) {
       next(error);
     }
