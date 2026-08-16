@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
+import { loginLimiter } from '../middleware/rateLimiters';
 
 const router = Router();
 const authController = new AuthController();
@@ -9,7 +10,7 @@ const authController = new AuthController();
  * POST /api/auth/login
  * Public login endpoint
  */
-router.post('/login', (req, res, next) => authController.login(req, res, next));
+router.post('/login', loginLimiter, (req, res, next) => authController.login(req, res, next));
 
 /**
  * GET /api/auth/me
