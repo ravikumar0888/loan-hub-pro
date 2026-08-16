@@ -33,7 +33,9 @@ export class DsaInvoiceController {
         dsaId,
         parseInt(month),
         parseInt(year),
-        req.user.userId
+        req.user.userId,
+        req.user.role,
+        req.organizationId
       );
 
       res.status(201).json({
