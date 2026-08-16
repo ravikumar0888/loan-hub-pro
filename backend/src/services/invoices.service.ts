@@ -161,21 +161,25 @@ export class InvoicesService {
       updateData.paidAt = new Date();
     }
 
-    const invoice = await prisma.invoice.update({
-      where: { id },
-      data: updateData,
-      include: {
-        organization: true,
-      },
-    });
-
-    // If paid, ensure organization is active
-    if (status === 'paid') {
-      await prisma.organization.update({
-        where: { id: invoice.organizationId },
-        data: { status: 'active' },
+    const invoice = await prisma.$transaction(async (tx) => {
+      const updatedInvoice = await tx.invoice.update({
+        where: { id },
+        data: updateData,
+        include: {
+          organization: true,
+        },
       });
-    }
+
+      // If paid, ensure organization is active
+      if (status === 'paid') {
+        await tx.organization.update({
+          where: { id: updatedInvoice.organizationId },
+          data: { status: 'active' },
+        });
+      }
+
+      return updatedInvoice;
+    });
 
     return invoice;
   }
