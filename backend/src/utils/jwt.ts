@@ -1,7 +1,17 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { AuthUser } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production';
+const INSECURE_DEFAULT_SECRET = 'default-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET || JWT_SECRET === INSECURE_DEFAULT_SECRET) {
+  throw new Error(
+    'JWT_SECRET environment variable must be set to a strong, unique value before starting the server. ' +
+    'Refusing to start with an unset or default secret, as this allows tokens to be forged for any user.'
+  );
+}
+
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 export const generateToken = (payload: AuthUser): string => {
@@ -17,5 +27,5 @@ export const verifyToken = (token: string): AuthUser => {
 };
 
 export const generatePasswordResetToken = (): string => {
-  return jwt.sign({ purpose: 'password-reset' }, JWT_SECRET, { expiresIn: '1h' });
+  return crypto.randomBytes(32).toString('hex');
 };
