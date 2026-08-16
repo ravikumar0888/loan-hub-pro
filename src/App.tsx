@@ -31,12 +31,12 @@ import MasterAdminDashboard from "./pages/MasterAdmin";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0, // Data is always considered stale
-      gcTime: 0, // Garbage collect immediately (formerly cacheTime)
-      refetchOnMount: true, // Always refetch when component mounts
-      refetchOnWindowFocus: true, // Refetch when window regains focus
-      refetchOnReconnect: true, // Refetch when network reconnects
-      retry: 1, // Retry failed requests once
+      staleTime: 30 * 1000,       // Data considered fresh for 30s
+      gcTime: 5 * 60 * 1000,      // Keep unused data cached for 5 minutes
+      refetchOnMount: true,       // Still refetch stale data on mount
+      refetchOnWindowFocus: true, // Still refetch stale data on focus
+      refetchOnReconnect: true,   // Still refetch stale data on reconnect
+      retry: 1,
     },
   },
 });
