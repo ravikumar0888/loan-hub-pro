@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import logger from '../utils/logger';
@@ -31,9 +31,8 @@ export class BackupService {
     // 1. Check env variable
     if (process.env.PG_BIN_PATH) {
       const pgDump = path.join(process.env.PG_BIN_PATH, 'pg_dump');
-      if (fs.existsSync(pgDump) || fs.existsSync(pgDump + '.exe')) {
-        return `"${pgDump}"`;
-      }
+      if (fs.existsSync(pgDump)) return pgDump;
+      if (fs.existsSync(pgDump + '.exe')) return pgDump + '.exe';
     }
 
     // 2. Auto-detect on Windows - check common PostgreSQL install paths
@@ -52,7 +51,7 @@ export class BackupService {
               const pgDump = path.join(pgDir, ver, 'bin', 'pg_dump.exe');
               if (fs.existsSync(pgDump)) {
                 logger.info(`Found pg_dump at: ${pgDump}`);
-                return `"${pgDump}"`;
+                return pgDump;
               }
             }
           } catch (e) {
@@ -74,11 +73,12 @@ export class BackupService {
     const { host, port, user, password, database } = this.parseDatabaseUrl();
 
     // Validate and prepare save directory
-    if (!fs.existsSync(savePath)) {
-      fs.mkdirSync(savePath, { recursive: true });
+    const resolvedSavePath = path.resolve(savePath);
+    if (!fs.existsSync(resolvedSavePath)) {
+      fs.mkdirSync(resolvedSavePath, { recursive: true });
     }
 
-    const stat = fs.statSync(savePath);
+    const stat = fs.statSync(resolvedSavePath);
     if (!stat.isDirectory()) {
       throw new Error('The specified path is not a valid directory');
     }
@@ -87,18 +87,16 @@ export class BackupService {
     const now = new Date();
     const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const fileName = `backup_${database}_${timestamp}.sql`;
-    const filePath = path.join(savePath, fileName);
+    const filePath = path.join(resolvedSavePath, fileName);
 
     // Find pg_dump executable
     const pgDump = this.findPgDump();
 
-    // Build pg_dump command
-    const command = `${pgDump} -h ${host} -p ${port} -U ${user} -d ${database} -F p -f "${filePath}"`;
-
     return new Promise((resolve, reject) => {
       const env = { ...process.env, PGPASSWORD: password };
+      const args = ['-h', host, '-p', port, '-U', user, '-d', database, '-F', 'p', '-f', filePath];
 
-      exec(command, { env, timeout: 120000 }, (error, stdout, stderr) => {
+      execFile(pgDump, args, { env, timeout: 120000 }, (error, stdout, stderr) => {
         if (error) {
           logger.error('Backup failed:', error.message);
           if (fs.existsSync(filePath)) {
