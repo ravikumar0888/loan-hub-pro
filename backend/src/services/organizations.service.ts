@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { PAGINATION_DEFAULTS } from '../config/constants';
+import { PAGINATION_DEFAULTS, PRICING_TIER_LIMITS } from '../config/constants';
 import { OrganizationQueryParams, CreateOrganizationDto, UpdateOrganizationDto } from '../types';
 import { hashPassword } from '../utils/password';
 
@@ -123,22 +123,16 @@ export class OrganizationsService {
    * Create organization with super admin (self-service signup)
    */
   async createOrganization(data: CreateOrganizationDto) {
-    // Validate pricing tier and fixed seat counts
-    const tierSeats: Record<string, number> = {
-      starter: 14,      // Standard: 1 Superadmin + 1 Admin + 2 Backoffice + 10 Connector
-      professional: 66, // Professional: 1 Superadmin + 5 Admin + 10 Backoffice + 50 Connector
-      enterprise: 33,   // Enterprise: 1 Superadmin + 2 Admin + 5 Backoffice + 25 Connector
-    };
-
-    const expectedSeats = tierSeats[data.pricingTier];
-    if (!expectedSeats) {
+    const tierConfig = PRICING_TIER_LIMITS[data.pricingTier as keyof typeof PRICING_TIER_LIMITS];
+    if (!tierConfig) {
       throw new Error('Invalid pricing tier');
     }
 
-    // Note: We're flexible with seats to allow for customization, but log if it differs
-    if (data.seats !== expectedSeats) {
-      console.log(`Warning: Seats (${data.seats}) differ from expected (${expectedSeats}) for ${data.pricingTier} plan`);
-    }
+    // Seats and price are always derived from the tier server-side -
+    // client-supplied values for these fields are ignored so a caller
+    // can't set their own billing amount at signup.
+    const seats = tierConfig.fixedSeats;
+    const monthlyAmount = tierConfig.packagePrice;
 
     // Check if email already exists
     const existingOrg = await prisma.organization.findUnique({
@@ -185,10 +179,10 @@ export class OrganizationsService {
           website: data.website,
           logo: data.logo,
           pricingTier: data.pricingTier as any,
-          seats: data.seats,
+          seats,
           usedSeats: 1, // Super admin counts as first user
-          monthlyAmount: data.monthlyAmount, // Store total billing amount
-          addons: (data.addons || []) as any, // Store add-ons configuration
+          monthlyAmount, // Derived server-side from pricingTier, not client input
+          addons: [] as any, // Addons are an enterprise-only, admin-configured feature - not settable at public signup
           status: 'trial',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
         },
