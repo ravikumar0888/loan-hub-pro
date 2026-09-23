@@ -99,7 +99,34 @@ export class DsaInvoiceService {
   /**
    * Generate a DSA invoice for a given period
    */
-  async generateDsaInvoice(dsaId: string, month: number, year: number, issuedById: string) {
+  async generateDsaInvoice(
+    dsaId: string,
+    month: number,
+    year: number,
+    issuedById: string,
+    userRole: string,
+    organizationId: string | null
+  ) {
+    // 0. Fetch DSA and verify it belongs to the caller's organization
+    const dsa = await prisma.dsa.findUnique({
+      where: { id: dsaId },
+      include: {
+        bankDetails: {
+          include: {
+            bank: true,
+          },
+        },
+      },
+    });
+
+    if (!dsa) {
+      throw new Error('DSA not found');
+    }
+
+    if (userRole !== 'master_admin' && organizationId && dsa.organizationId !== organizationId) {
+      throw new Error('Access denied: DSA does not belong to your organization');
+    }
+
     // 1. Calculate commission (taxable amount)
     const taxableAmount = await this.calculateDsaCommission(dsaId, month, year);
 
@@ -131,38 +158,22 @@ export class DsaInvoiceService {
       throw new Error('Issuer not found');
     }
 
-    // 3. Get DSA details
-    const dsa = await prisma.dsa.findUnique({
-      where: { id: dsaId },
-      include: {
-        bankDetails: {
-          include: {
-            bank: true,
-          },
-        },
-      },
-    });
-
-    if (!dsa) {
-      throw new Error('DSA not found');
-    }
-
-    // 4. Use admin's GST configuration or defaults
+    // 3. Use admin's GST configuration or defaults
     const cgstRate = issuer.cgstRate || new Prisma.Decimal(9);
     const sgstRate = issuer.sgstRate || new Prisma.Decimal(9);
     const hsnSac = issuer.hsnSac || '997159';
 
-    // 5. Calculate taxes
+    // 4. Calculate taxes
     const cgstAmount = (taxableAmount * Number(cgstRate)) / 100;
     const sgstAmount = (taxableAmount * Number(sgstRate)) / 100;
     const subtotal = taxableAmount + cgstAmount + sgstAmount;
     const roundOff = Math.round(subtotal) - subtotal;
     const totalAmount = Math.round(subtotal);
 
-    // 6. Generate invoice number
+    // 5. Generate invoice number
     const invoiceNumber = await this.generateInvoiceNumber();
 
-    // 7. Check if invoice already exists for this period
+    // 6. Check if invoice already exists for this period
     const existingInvoice = await prisma.dsaInvoice.findFirst({
       where: {
         dsaId,
@@ -175,7 +186,7 @@ export class DsaInvoiceService {
       throw new Error('Invoice already exists for this period');
     }
 
-    // 8. Create invoice record
+    // 7. Create invoice record
     const invoice = await prisma.dsaInvoice.create({
       data: {
         invoiceNumber,
@@ -212,11 +223,11 @@ export class DsaInvoiceService {
       },
     });
 
-    // 9. Generate PDF
+    // 8. Generate PDF
     const { DsaInvoicePdfGenerator } = await import('../utils/dsaInvoicePdfGenerator');
     const pdfPath = await DsaInvoicePdfGenerator.generateInvoicePDF(invoice);
 
-    // 10. Update invoice with PDF URL
+    // 9. Update invoice with PDF URL
     const updatedInvoice = await prisma.dsaInvoice.update({
       where: { id: invoice.id },
       data: { pdfUrl: pdfPath },

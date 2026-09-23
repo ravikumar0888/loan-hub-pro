@@ -24,6 +24,7 @@ import profileRoutes from './routes/profile.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import dsaInvoiceRoutes from './routes/dsaInvoice.routes';
 import backupRoutes from './routes/backup.routes';
+import filesRoutes from './routes/files.routes';
 
 // Import middleware
 import { authenticate } from './middleware/auth';
@@ -31,6 +32,11 @@ import { organizationContext } from './middleware/organizationContext';
 
 // Create Express app
 const app: Application = express();
+
+// Trust the first hop reverse proxy (Apache/nginx) for correct client IP
+// detection - required for express-rate-limit to key on the real client
+// IP instead of the proxy's loopback address.
+app.set('trust proxy', 1);
 
 // ============================================
 // MIDDLEWARE
@@ -55,10 +61,6 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api', apiLimiter);
-
-// Static files (for uploads and PDFs)
-app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
-app.use('/pdfs', express.static(path.join(process.cwd(), 'public/pdfs')));
 
 // Disable caching for all API routes
 app.use('/api', (req, res, next) => {
@@ -117,6 +119,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/dsa-invoices', dsaInvoiceRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/files', filesRoutes);
 
 // ============================================
 // ERROR HANDLING
@@ -135,12 +138,14 @@ app.use((req, res) => {
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   logger.error(`${req.method} ${req.url} - ${err.message}`);
 
-  // Prisma errors
+  // Prisma errors - message contains raw DB detail (table/column/constraint
+  // names) that no application code intentionally wrote for end users, so
+  // it's only shown in development, unlike the default branch below.
   if (err.code && err.code.startsWith('P')) {
     return res.status(400).json({
       success: false,
       error: 'Database error',
-      message: err.message,
+      ...(process.env.NODE_ENV === 'development' && { message: err.message }),
     });
   }
 

@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
+import { loginLimiter } from '../middleware/rateLimiters';
+import { validate } from '../middleware/validator';
+import { forgotPasswordSchema, resetPasswordSchema } from '../utils/validators';
 
 const router = Router();
 const authController = new AuthController();
@@ -9,7 +12,29 @@ const authController = new AuthController();
  * POST /api/auth/login
  * Public login endpoint
  */
-router.post('/login', (req, res, next) => authController.login(req, res, next));
+router.post('/login', loginLimiter, (req, res, next) => authController.login(req, res, next));
+
+/**
+ * POST /api/auth/forgot-password
+ * Public endpoint - requests a password reset link
+ */
+router.post(
+  '/forgot-password',
+  loginLimiter,
+  validate(forgotPasswordSchema),
+  (req, res, next) => authController.forgotPassword(req, res, next)
+);
+
+/**
+ * POST /api/auth/reset-password
+ * Public endpoint - resets password using a valid reset token
+ */
+router.post(
+  '/reset-password',
+  loginLimiter,
+  validate(resetPasswordSchema),
+  (req, res, next) => authController.resetPassword(req, res, next)
+);
 
 /**
  * GET /api/auth/me

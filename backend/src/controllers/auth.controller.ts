@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import { generateToken } from '../utils/jwt';
 import { AuthRequest } from '../types';
 import prisma from '../config/database';
+import { AuthService } from '../services/auth.service';
+
+const authService = new AuthService();
 
 export class AuthController {
   /**
@@ -236,6 +239,33 @@ export class AuthController {
       });
     } catch (error: any) {
       console.error('Verify password error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Request a password reset link
+   * Always returns a generic success message, whether or not the email exists
+   */
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email } = req.body;
+      const result = await authService.forgotPassword(email);
+      res.json({ success: true, message: result.message });
+    } catch (error: any) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reset password using a valid reset token
+   */
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token, password } = req.body;
+      const result = await authService.resetPassword(token, password);
+      res.json({ success: true, message: result.message });
+    } catch (error: any) {
       next(error);
     }
   }

@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { ReportQuery } from '../types';
 
 export class ReportsService {
-  async generateReport(query: ReportQuery, userId?: string, userRole?: string, organizationId?: string | null) {
+  private buildWhere(query: ReportQuery, userId?: string, userRole?: string, organizationId?: string | null) {
     const where: any = {};
 
     // Multi-tenant filtering
@@ -49,63 +49,64 @@ export class ReportsService {
       where.status = query.status;
     }
 
-    const customers = await prisma.customer.findMany({
-      where,
-      include: {
-        connector: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            userBankDetails: {
-              include: {
-                bank: true,
-              },
+    return where;
+  }
+
+  private reportInclude() {
+    return {
+      connector: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          userBankDetails: {
+            include: {
+              bank: true,
             },
           },
-        },
-        bank: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        dsa: {
-          select: {
-            id: true,
-            name: true,
-            bankDetails: {
-              include: {
-                bank: true,
-              },
-            },
-          },
-        },
-        leadOwnerUser: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        remarks: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
         },
       },
-      orderBy: { applicationDate: 'desc' },
-    });
+      bank: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      dsa: {
+        select: {
+          id: true,
+          name: true,
+          bankDetails: {
+            include: {
+              bank: true,
+            },
+          },
+        },
+      },
+      leadOwnerUser: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+      creator: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+      remarks: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+      },
+    };
+  }
 
-    // Calculate payout for each customer
-    const customersWithPayout = customers.map((customer) => {
+  private attachPayouts(customers: any[]) {
+    return customers.map((customer) => {
       let connectorPayout = 0;
       let dsaPayout = 0;
       let tds = 0;
@@ -164,8 +165,61 @@ export class ReportsService {
           : null,
       };
     });
+  }
 
-    return customersWithPayout;
+  /**
+   * page/limit are opt-in: if the caller doesn't pass them, this returns the
+   * full matching set exactly as before (Reports.tsx currently does its own
+   * client-side search/status filtering + pagination over the complete
+   * result, so defaulting to a small server-side page here would silently
+   * break that filtering). Pass both to get real skip/take pagination.
+   */
+  async generateReport(
+    query: ReportQuery,
+    userId?: string,
+    userRole?: string,
+    organizationId?: string | null,
+    page?: number,
+    limit?: number
+  ) {
+    const where = this.buildWhere(query, userId, userRole, organizationId);
+    const shouldPaginate = page !== undefined && limit !== undefined;
+    const cappedLimit = shouldPaginate ? Math.min(limit as number, 100) : undefined;
+    const skip = shouldPaginate ? ((page as number) - 1) * (cappedLimit as number) : undefined;
+
+    const [customers, total] = await Promise.all([
+      prisma.customer.findMany({
+        where,
+        include: this.reportInclude(),
+        orderBy: { applicationDate: 'desc' },
+        ...(shouldPaginate ? { skip, take: cappedLimit } : {}),
+      }),
+      prisma.customer.count({ where }),
+    ]);
+
+    return {
+      customers: this.attachPayouts(customers),
+      pagination: shouldPaginate
+        ? { page, limit: cappedLimit, total, totalPages: Math.ceil(total / (cappedLimit as number)) }
+        : { page: 1, limit: total, total, totalPages: 1 },
+    };
+  }
+
+  async generateReportForExport(
+    query: ReportQuery,
+    userId?: string,
+    userRole?: string,
+    organizationId?: string | null
+  ) {
+    const where = this.buildWhere(query, userId, userRole, organizationId);
+
+    const customers = await prisma.customer.findMany({
+      where,
+      include: this.reportInclude(),
+      orderBy: { applicationDate: 'desc' },
+    });
+
+    return this.attachPayouts(customers);
   }
 
   async getReportSummary(query: ReportQuery, userId?: string, userRole?: string, organizationId?: string | null) {

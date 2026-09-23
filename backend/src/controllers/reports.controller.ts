@@ -7,16 +7,22 @@ const reportsService = new ReportsService();
 export class ReportsController {
   async generateReport(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const customers = await reportsService.generateReport(
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+
+      const result = await reportsService.generateReport(
         req.query,
         req.user?.userId,
         req.user?.role,
-        req.organizationId
+        req.organizationId,
+        page,
+        limit
       );
 
       res.json({
         success: true,
-        data: customers,
+        data: result.customers,
+        pagination: result.pagination,
       });
     } catch (error: any) {
       next(error);
@@ -43,7 +49,7 @@ export class ReportsController {
 
   async exportReport(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const customers = await reportsService.generateReport(
+      const customers = await reportsService.generateReportForExport(
         req.query,
         req.user?.userId,
         req.user?.role,

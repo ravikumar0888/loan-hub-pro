@@ -420,11 +420,6 @@ export const invoicesApi = {
       `/invoices/analytics${params ? `?${new URLSearchParams(params).toString()}` : ''}`
     ),
 
-  download: (id: string) =>
-    apiRequest<{ success: boolean; data: { pdfUrl: string }; message: string }>(
-      `/invoices/${id}/download`
-    ),
-
   delete: (id: string) =>
     apiRequest<{ success: boolean; message: string }>(`/invoices/${id}`, {
       method: 'DELETE',

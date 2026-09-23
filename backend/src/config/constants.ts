@@ -5,7 +5,14 @@ export const ALLOWED_ROLES_FOR_CREATION = ['admin', 'backoffice', 'connector'] a
 export const PAGINATION_DEFAULTS = {
   page: 1,
   limit: 10,
-  maxLimit: 100,
+  // Frontend list pages (Customers, Banks, Users, Payouts) request
+  // limit: 10000 expecting "everything" and do their own client-side
+  // search/filter/pagination over the full result - the old cap of 100
+  // silently truncated results for any org with more matching rows than
+  // that, with no error or indication to the user. Raised to comfortably
+  // exceed realistic per-org data volumes while still bounding the
+  // worst-case query size (unlike true unbounded).
+  maxLimit: 5000,
 };
 
 export const PRICING_TIER_LIMITS = {
