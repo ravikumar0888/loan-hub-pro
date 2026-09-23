@@ -343,6 +343,7 @@ export class UsersService {
     if (data.mobile) updateData.mobile = data.mobile;
     if (data.role) updateData.role = data.role;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.password) updateData.passwordHash = await hashPassword(data.password);
 
     const updatedUser = await prisma.user.update({
       where: { id },

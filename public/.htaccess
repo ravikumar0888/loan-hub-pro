@@ -1,0 +1,13 @@
+# SPA fallback: react-router uses the HTML5 history API, so a direct
+# load/refresh of any client-side route (e.g. /dashboard) must be served
+# index.html instead of a 404 - the app then reads the URL and renders
+# the right route itself.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Don't rewrite requests for real files/directories (assets, images, etc.)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
